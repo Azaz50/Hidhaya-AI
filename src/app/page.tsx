@@ -5,15 +5,15 @@ import { useAppStore, Language, AppMode, ActiveTab } from '@/lib/store';
 import {
   MessageCircle, Book, BookOpen, Heart, Sparkles, Moon, Sun,
   Send, Search, Bookmark, BookmarkCheck, Copy, Check, Trash2,
-  ChevronDown, Globe, Baby, GraduationCap, Menu, X, Star,
+  Globe, Baby, GraduationCap, Menu, X, Star,
   AlertCircle, Loader2, Share2, Bot, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -21,14 +21,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
+
 import { useTheme } from 'next-themes';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Helper: generate unique IDs ─────────────────────────────────────────────
 const uid = () => Math.random().toString(36).substring(2, 15);
+
+// ─── Helper: share via Web Share API or fallback to clipboard ─────────────────
+async function shareContent(title: string, text: string) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text });
+      return true;
+    } catch {
+      // User cancelled or share failed, fall through to clipboard
+    }
+  }
+  await navigator.clipboard.writeText(text);
+  return false;
+}
 
 // ─── Quick question suggestions ──────────────────────────────────────────────
 const quickQuestions = [
@@ -42,21 +56,44 @@ const quickQuestions = [
   'Rights of neighbors in Islam',
 ];
 
+// ─── Animation Variants ──────────────────────────────────────────────────────
+const tabContentVariants = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.15, ease: 'easeIn' } },
+};
+
+const messageBubbleVariants = {
+  initial: { opacity: 0, y: 16, scale: 0.97 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+};
+
+const refCardHover = {
+  scale: 1.01,
+  transition: { duration: 0.15, ease: 'easeOut' },
+};
+
 // ─── Component: Header ───────────────────────────────────────────────────────
 function Header() {
   const { language, setLanguage, mode, setMode, isSidebarOpen, toggleSidebar } = useAppStore();
   const { theme, setTheme } = useTheme();
 
+  const modes: Array<{ id: AppMode; label: string; shortLabel: string; icon: React.ReactNode }> = [
+    { id: 'standard', label: 'Standard', shortLabel: 'Std', icon: null },
+    { id: 'beginner', label: 'Beginner', shortLabel: 'Beg', icon: <GraduationCap className="h-3 w-3" /> },
+    { id: 'kids', label: 'Kids', shortLabel: 'Kids', icon: <Baby className="h-3 w-3" /> },
+  ];
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center px-4 gap-3">
+      <div className="flex h-14 items-center px-3 sm:px-4 gap-2 sm:gap-3">
         {/* Mobile menu */}
-        <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleSidebar}>
+        <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={toggleSidebar}>
           {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
 
         {/* Logo & Title */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white">
             <Star className="h-4 w-4" />
           </div>
@@ -67,35 +104,30 @@ function Header() {
 
         <div className="flex-1" />
 
-        {/* Mode selector */}
-        <div className="flex items-center gap-1.5">
-          <Badge
-            variant={mode === 'standard' ? 'default' : 'outline'}
-            className={`cursor-pointer text-xs px-2 py-0.5 ${mode === 'standard' ? 'bg-emerald-600 hover:bg-emerald-700' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950'}`}
-            onClick={() => setMode('standard')}
-          >
-            Standard
-          </Badge>
-          <Badge
-            variant={mode === 'beginner' ? 'default' : 'outline'}
-            className={`cursor-pointer text-xs px-2 py-0.5 flex items-center gap-1 ${mode === 'beginner' ? 'bg-emerald-600 hover:bg-emerald-700' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950'}`}
-            onClick={() => setMode('beginner')}
-          >
-            <GraduationCap className="h-3 w-3" /> Beginner
-          </Badge>
-          <Badge
-            variant={mode === 'kids' ? 'default' : 'outline'}
-            className={`cursor-pointer text-xs px-2 py-0.5 flex items-center gap-1 ${mode === 'kids' ? 'bg-emerald-600 hover:bg-emerald-700' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950'}`}
-            onClick={() => setMode('kids')}
-          >
-            <Baby className="h-3 w-3" /> Kids
-          </Badge>
+        {/* Mode selector - responsive */}
+        <div className="flex items-center gap-1">
+          {modes.map((m) => (
+            <Badge
+              key={m.id}
+              variant={mode === m.id ? 'default' : 'outline'}
+              className={`cursor-pointer text-xs px-1.5 sm:px-2 py-0.5 ${
+                mode === m.id
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'hover:bg-emerald-50 dark:hover:bg-emerald-950'
+              } flex items-center gap-0.5 sm:gap-1`}
+              onClick={() => setMode(m.id)}
+            >
+              {m.icon}
+              <span className="hidden sm:inline">{m.label}</span>
+              <span className="sm:hidden">{m.shortLabel}</span>
+            </Badge>
+          ))}
         </div>
 
-        {/* Language selector */}
+        {/* Language selector - responsive width */}
         <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
-          <SelectTrigger className="w-[130px] h-8 text-xs">
-            <Globe className="h-3.5 w-3.5 mr-1" />
+          <SelectTrigger className="w-[90px] sm:w-[130px] h-8 text-xs">
+            <Globe className="h-3.5 w-3.5 mr-1 shrink-0" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -111,7 +143,7 @@ function Header() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 shrink-0"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -158,8 +190,11 @@ function TabNavigation() {
 // ─── Component: Reference Card ────────────────────────────────────────────────
 function QuranRefCard({ quranRef, language }: { quranRef: { chapter: number; verse: number; text: string; translation: string }; language: string }) {
   const [copied, setCopied] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const { addBookmark } = useAppStore();
   const { toast } = useToast();
+
+  const shareText = `Quran ${quranRef.chapter}:${quranRef.verse}\n\n${quranRef.text}\n\n${quranRef.translation}\n\n— Hidayah AI`;
 
   const copyText = () => {
     navigator.clipboard.writeText(`Quran ${quranRef.chapter}:${quranRef.verse}\n\n${quranRef.text}\n\n${quranRef.translation}`);
@@ -167,45 +202,74 @@ function QuranRefCard({ quranRef, language }: { quranRef: { chapter: number; ver
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const saveBookmark = () => {
-    addBookmark({
+  const handleShare = async () => {
+    const usedShare = await shareContent(`Quran ${quranRef.chapter}:${quranRef.verse}`, shareText);
+    toast({
+      title: usedShare ? 'Shared!' : 'Copied to clipboard',
+      description: usedShare ? 'Content shared successfully.' : 'Share not available, content copied instead.',
+    });
+  };
+
+  const saveBookmark = async () => {
+    if (isBookmarked) return;
+    setIsBookmarked(true);
+    const item = {
       id: uid(),
-      type: 'quran',
+      type: 'quran' as const,
       reference: `${quranRef.chapter}:${quranRef.verse}`,
       content: `${quranRef.text}\n\n${quranRef.translation}`,
       metadata: { chapter: quranRef.chapter, verse: quranRef.verse },
       createdAt: new Date().toISOString(),
-    });
+    };
+    addBookmark(item);
+    // Persist to API
+    try {
+      await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      });
+    } catch {
+      // Gracefully handle API error - bookmark is still in local store
+    }
     toast({ title: 'Bookmarked!', description: `Quran ${quranRef.chapter}:${quranRef.verse} saved.` });
   };
 
   return (
-    <Card className="mb-3 border-l-4 border-l-emerald-500">
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 shrink-0">
-            Quran {quranRef.chapter}:{quranRef.verse}
-          </Badge>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveBookmark}>
-              <Bookmark className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyText}>
-              {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
-            </Button>
+    <motion.div whileHover={refCardHover}>
+      <Card className="mb-3 border-l-4 border-l-emerald-500 transition-shadow hover:shadow-md">
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between gap-2">
+            <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 shrink-0">
+              Quran {quranRef.chapter}:{quranRef.verse}
+            </Badge>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveBookmark} disabled={isBookmarked}>
+                {isBookmarked ? <BookmarkCheck className="h-3 w-3 text-emerald-600" /> : <Bookmark className="h-3 w-3" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleShare}>
+                <Share2 className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyText}>
+                {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
           </div>
-        </div>
-        <p className="text-right mt-2 text-lg font-arabic leading-loose" dir="rtl">{quranRef.text}</p>
-        <p className="mt-2 text-sm text-muted-foreground">{quranRef.translation}</p>
-      </CardContent>
-    </Card>
+          <p className="text-right mt-2 text-lg font-arabic leading-loose" dir="rtl">{quranRef.text}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{quranRef.translation}</p>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
 function HadithRefCard({ hadithRef }: { hadithRef: { id: number; book: string; text: string; narrator: string } }) {
   const [copied, setCopied] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const { addBookmark } = useAppStore();
   const { toast } = useToast();
+
+  const shareText = `${hadithRef.book}, Hadith #${hadithRef.id}\n${hadithRef.narrator ? hadithRef.narrator + '\n' : ''}\n${hadithRef.text}\n\n— Hidayah AI`;
 
   const copyText = () => {
     navigator.clipboard.writeText(`${hadithRef.book}, Hadith #${hadithRef.id}\n${hadithRef.narrator}\n\n${hadithRef.text}`);
@@ -213,42 +277,68 @@ function HadithRefCard({ hadithRef }: { hadithRef: { id: number; book: string; t
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const saveBookmark = () => {
-    addBookmark({
+  const handleShare = async () => {
+    const usedShare = await shareContent(`${hadithRef.book} #${hadithRef.id}`, shareText);
+    toast({
+      title: usedShare ? 'Shared!' : 'Copied to clipboard',
+      description: usedShare ? 'Content shared successfully.' : 'Share not available, content copied instead.',
+    });
+  };
+
+  const saveBookmark = async () => {
+    if (isBookmarked) return;
+    setIsBookmarked(true);
+    const item = {
       id: uid(),
-      type: 'hadith',
+      type: 'hadith' as const,
       reference: `${hadithRef.book} #${hadithRef.id}`,
       content: hadithRef.text,
       metadata: { id: hadithRef.id, book: hadithRef.book },
       createdAt: new Date().toISOString(),
-    });
+    };
+    addBookmark(item);
+    // Persist to API
+    try {
+      await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      });
+    } catch {
+      // Gracefully handle API error - bookmark is still in local store
+    }
     toast({ title: 'Bookmarked!', description: `Hadith saved.` });
   };
 
   return (
-    <Card className="mb-3 border-l-4 border-l-amber-500">
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-              {hadithRef.book} #{hadithRef.id}
-            </Badge>
-            {hadithRef.narrator && (
-              <p className="text-xs text-muted-foreground mt-1">{hadithRef.narrator}</p>
-            )}
+    <motion.div whileHover={refCardHover}>
+      <Card className="mb-3 border-l-4 border-l-amber-500 transition-shadow hover:shadow-md">
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                {hadithRef.book} #{hadithRef.id}
+              </Badge>
+              {hadithRef.narrator && (
+                <p className="text-xs text-muted-foreground mt-1">{hadithRef.narrator}</p>
+              )}
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveBookmark} disabled={isBookmarked}>
+                {isBookmarked ? <BookmarkCheck className="h-3 w-3 text-amber-600" /> : <Bookmark className="h-3 w-3" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleShare}>
+                <Share2 className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyText}>
+                {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveBookmark}>
-              <Bookmark className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyText}>
-              {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
-            </Button>
-          </div>
-        </div>
-        <p className="mt-2 text-sm">{hadithRef.text}</p>
-      </CardContent>
-    </Card>
+          <p className="mt-2 text-sm">{hadithRef.text}</p>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -257,7 +347,12 @@ function ChatMessageBubble({ msg }: { msg: ReturnType<typeof useAppStore.getStat
   const isUser = msg.role === 'user';
 
   return (
-    <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+    <motion.div
+      variants={messageBubbleVariants}
+      initial="initial"
+      animate="animate"
+      className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
+    >
       {!isUser && (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
           <Bot className="h-4 w-4 text-emerald-600" />
@@ -332,7 +427,7 @@ function ChatMessageBubble({ msg }: { msg: ReturnType<typeof useAppStore.getStat
           <User className="h-4 w-4 text-white" />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -342,17 +437,29 @@ function ChatPanel() {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // Use requestAnimationFrame to ensure DOM has updated before scrolling
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages, scrollToBottom]);
+
+  // Auto-resize textarea
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    // Reset height to recalculate
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  };
 
   const sendMessage = async (question?: string) => {
     const q = question || input.trim();
@@ -360,6 +467,10 @@ function ChatPanel() {
 
     setIsSending(true);
     setInput('');
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
 
     // Add user message
     const userMsgId = uid();
@@ -416,7 +527,7 @@ function ChatPanel() {
           isLoading: false,
         });
       }
-    } catch (error) {
+    } catch {
       updateChatMessage(botMsgId, {
         content: 'I apologize, but I encountered a network error. Please check your connection and try again.',
         isLoading: false,
@@ -424,25 +535,38 @@ function ChatPanel() {
     }
 
     setIsSending(false);
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   return (
     <div className="flex flex-col h-full">
       {/* Chat messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-1">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-1 scroll-smooth">
         {chatMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mb-4">
-              <Star className="h-8 w-8 text-emerald-600" />
+            {/* Decorative background glow */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-emerald-200/50 dark:bg-emerald-800/30 rounded-full blur-2xl scale-150" />
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg">
+                <Star className="h-10 w-10 text-white" />
+              </div>
             </div>
-            <h2 className="text-xl font-bold mb-1">As-salamu Alaykum!</h2>
-            <p className="text-muted-foreground text-sm mb-6 max-w-md">
-              Ask any question about Islam and I will answer using authentic Quran verses and Hadith references.
+            <h2 className="text-2xl font-bold mb-2">As-salamu Alaykum!</h2>
+            <p className="text-muted-foreground text-sm mb-6 max-w-md leading-relaxed">
+              Your Islamic AI companion. Ask any question about Islam and receive answers with authentic
+              <span className="text-emerald-600 font-medium"> Quran verses</span> and
+              <span className="text-amber-600 font-medium"> Hadith references</span>.
             </p>
 
             {/* Disclaimer */}
-            <div className="flex items-center gap-2 mb-6 px-4 py-2 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-2 mb-8 px-4 py-2.5 bg-amber-50 dark:bg-amber-950 rounded-xl border border-amber-200 dark:border-amber-800 max-w-md">
               <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
               <p className="text-xs text-amber-700 dark:text-amber-300">
                 AI can make mistakes. Verify important matters with qualified scholars.
@@ -452,14 +576,20 @@ function ChatPanel() {
             {/* Quick questions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg w-full">
               {quickQuestions.map((q, i) => (
-                <Button
+                <motion.div
                   key={i}
-                  variant="outline"
-                  className="text-xs h-auto py-2 px-3 justify-start text-left hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-950 dark:hover:border-emerald-700"
-                  onClick={() => sendMessage(q)}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.25 }}
                 >
-                  {q}
-                </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full text-xs h-auto py-2.5 px-3 justify-start text-left hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-950 dark:hover:border-emerald-700 transition-colors"
+                    onClick={() => sendMessage(q)}
+                  >
+                    {q}
+                  </Button>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -468,41 +598,40 @@ function ChatPanel() {
         {chatMessages.map((msg) => (
           <ChatMessageBubble key={msg.id} msg={msg} />
         ))}
+
+        {/* Scroll anchor */}
+        <div ref={bottomRef} />
       </div>
 
-      {/* Input area */}
-      <div className="border-t p-3 bg-background">
-        <div className="flex gap-2 max-w-3xl mx-auto">
-          <div className="flex-1 flex gap-2">
-            <Input
-              ref={inputRef}
+      {/* Input area - more prominent */}
+      <div className="border-t p-3 sm:p-4 bg-background">
+        <div className="flex gap-2 max-w-3xl mx-auto items-end">
+          <div className="flex-1 relative">
+            <Textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder="Ask about Islam..."
-              className="flex-1"
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about Islam... (Shift+Enter for new line)"
+              className="w-full resize-none min-h-[44px] max-h-[120px] pr-12 rounded-xl bg-muted/50 border-muted-foreground/20 focus-visible:bg-background text-sm py-3"
               disabled={isSending}
+              rows={1}
             />
-            <Button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || isSending}
-              className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
-              size="icon"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
           </div>
+          <Button
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || isSending}
+            className="bg-emerald-600 hover:bg-emerald-700 shrink-0 rounded-xl h-11 w-11"
+            size="icon"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
           {chatMessages.length > 0 && (
             <Button
               variant="ghost"
               size="icon"
               onClick={clearChat}
-              className="shrink-0"
+              className="shrink-0 rounded-xl h-11 w-11 text-muted-foreground hover:text-destructive"
               title="Clear chat"
             >
               <Trash2 className="h-4 w-4" />
@@ -659,6 +788,7 @@ function DuasPanel() {
   const { addBookmark } = useAppStore();
   const { toast } = useToast();
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
 
   const search = async () => {
     if (!query.trim()) return;
@@ -679,14 +809,27 @@ function DuasPanel() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const saveDua = (dua: typeof results[0]) => {
-    addBookmark({
+  const saveDua = async (dua: typeof results[0]) => {
+    if (bookmarkedIds.has(dua.id)) return;
+    setBookmarkedIds((prev) => new Set(prev).add(dua.id));
+    const item = {
       id: uid(),
-      type: 'chat',
+      type: 'chat' as const,
       reference: dua.reference,
       content: `${dua.title}\n${dua.arabic}\n${dua.translation}`,
       createdAt: new Date().toISOString(),
-    });
+    };
+    addBookmark(item);
+    // Persist to API
+    try {
+      await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item),
+      });
+    } catch {
+      // Gracefully handle API error
+    }
     toast({ title: 'Bookmarked!', description: `${dua.title} saved.` });
   };
 
@@ -733,27 +876,29 @@ function DuasPanel() {
       )}
 
       {results.map((dua) => (
-        <Card key={dua.id} className="mb-3 border-l-4 border-l-purple-500">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-semibold text-sm">{dua.title}</h3>
-                <p className="text-xs text-muted-foreground">{dua.titleArabic}</p>
+        <motion.div key={dua.id} whileHover={refCardHover}>
+          <Card className="mb-3 border-l-4 border-l-purple-500 transition-shadow hover:shadow-md">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-semibold text-sm">{dua.title}</h3>
+                  <p className="text-xs text-muted-foreground">{dua.titleArabic}</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => saveDua(dua)} disabled={bookmarkedIds.has(dua.id)}>
+                    {bookmarkedIds.has(dua.id) ? <BookmarkCheck className="h-3 w-3 text-purple-600" /> : <Bookmark className="h-3 w-3" />}
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyDua(dua)}>
+                    {copiedId === dua.id ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => saveDua(dua)}>
-                  <Bookmark className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyDua(dua)}>
-                  {copiedId === dua.id ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
-                </Button>
-              </div>
-            </div>
-            <p className="text-right text-lg leading-loose" dir="rtl">{dua.arabic}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{dua.translation}</p>
-            <Badge variant="secondary" className="mt-2 text-xs">{dua.reference}</Badge>
-          </CardContent>
-        </Card>
+              <p className="text-right text-lg leading-loose" dir="rtl">{dua.arabic}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{dua.translation}</p>
+              <Badge variant="secondary" className="mt-2 text-xs">{dua.reference}</Badge>
+            </CardContent>
+          </Card>
+        </motion.div>
       ))}
     </div>
   );
@@ -785,7 +930,9 @@ function BookmarksPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-    } catch {}
+    } catch {
+      // Gracefully handle API error
+    }
   };
 
   const typeIcons = {
@@ -1034,9 +1181,20 @@ export default function Home() {
       <MobileSidebar />
       <TabNavigation />
       <main className="flex-1 flex flex-col overflow-hidden">
-        {renderPanel()}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            variants={tabContentVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex-1 flex flex-col overflow-hidden"
+          >
+            {renderPanel()}
+          </motion.div>
+        </AnimatePresence>
       </main>
-      <footer className="border-t py-3 px-4 text-center">
+      <footer className="border-t py-3 px-4 text-center mt-auto">
         <p className="text-xs text-muted-foreground">
           Hidayah AI — AI can make mistakes. Verify important matters with qualified scholars.
         </p>

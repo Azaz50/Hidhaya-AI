@@ -24,6 +24,8 @@ interface HadithData {
   }>;
 }
 
+type LangKey = 'english' | 'Hindi' | 'Urdu' | 'Bengali';
+
 interface FlatHadith {
   id: number;
   bookName: string;
@@ -32,11 +34,11 @@ interface FlatHadith {
   text: string;
   narrator: string;
   reference: string;
-  langText?: string;
-  langNarrator?: string;
+  /** Cached translations for all languages, keyed by language key */
+  translations: Partial<Record<LangKey, { text: string; narrator: string }>>;
 }
 
-const languageKeyMap: Record<string, string> = {
+const languageKeyMap: Record<string, LangKey> = {
   English: 'english',
   Hindi: 'Hindi',
   Urdu: 'Urdu',
@@ -66,6 +68,23 @@ function getHadithData(): FlatHadith[] {
 
       for (const h of data.hadiths || []) {
         const chapterName = chapterMap.get(h.chapterId) || '';
+
+        // Build translations cache with all available languages
+        const translations: FlatHadith['translations'] = {};
+
+        if (h.english) {
+          translations.english = { text: h.english.text || '', narrator: h.english.narrator || '' };
+        }
+        if (h.Hindi) {
+          translations.Hindi = { text: h.Hindi.text || '', narrator: h.Hindi.narrator || '' };
+        }
+        if (h.Urdu) {
+          translations.Urdu = { text: h.Urdu.text || '', narrator: h.Urdu.narrator || '' };
+        }
+        if (h.Bengali) {
+          translations.Bengali = { text: h.Bengali.text || '', narrator: h.Bengali.narrator || '' };
+        }
+
         allHadiths.push({
           id: h.id,
           bookName,
@@ -74,6 +93,7 @@ function getHadithData(): FlatHadith[] {
           text: h.english?.text || '',
           narrator: h.english?.narrator || '',
           reference: `${bookName} #${h.idInBook || h.id}`,
+          translations,
         });
       }
     } catch (e) {
@@ -98,33 +118,11 @@ export async function GET(request: NextRequest) {
     const allHadiths = getHadithData();
     const langKey = languageKeyMap[language] || 'english';
 
-    // Build searchable items with language-specific text
+    // Build searchable items using cached language data — no disk re-reading
     const searchItems = allHadiths.map((h) => {
-      const hadithData = allHadiths.find((ah) => ah.id === h.id && ah.bookName === h.bookName);
-      let langText = h.text;
-      let langNarrator = h.narrator;
-
-      // Try to get language-specific text from the raw data
-      if (langKey !== 'english') {
-        try {
-          const hadithDir = path.join(process.cwd(), 'src/data/hadith');
-          const files = fs.readdirSync(hadithDir).filter((f) => f.endsWith('.json'));
-          for (const file of files) {
-            const raw = fs.readFileSync(path.join(hadithDir, file), 'utf-8');
-            const data = JSON.parse(raw);
-            const bookName = data.metadata?.english?.title || '';
-            if (bookName === h.bookName) {
-              const found = data.hadiths?.find((ht: { id: number }) => ht.id === h.id);
-              if (found && found[langKey]) {
-                langText = found[langKey].text || langText;
-                langNarrator = found[langKey].narrator || langNarrator;
-              }
-            }
-          }
-        } catch {
-          // Fallback to English
-        }
-      }
+      const langTranslation = h.translations[langKey];
+      const langText = langTranslation?.text || h.text;
+      const langNarrator = langTranslation?.narrator || h.narrator;
 
       return { ...h, langText, langNarrator };
     });
@@ -153,23 +151,28 @@ export async function GET(request: NextRequest) {
       reference: r.item.reference,
     }));
 
-    // Fallback keyword search
+    // Fallback keyword search using cached language data
     if (results.length === 0) {
       const lowerQuery = query.toLowerCase();
-      const fallback = allHadiths.filter(
-        (h) =>
+      const fallback = allHadiths.filter((h) => {
+        const langTranslation = h.translations[langKey];
+        const langText = langTranslation?.text || h.text;
+        return (
           h.arabic.includes(query) ||
           h.text.toLowerCase().includes(lowerQuery) ||
+          langText.toLowerCase().includes(lowerQuery) ||
           h.chapterName.toLowerCase().includes(lowerQuery)
-      );
+        );
+      });
       fallback.slice(0, 10).forEach((h) => {
+        const langTranslation = h.translations[langKey];
         results.push({
           id: h.id,
           bookName: h.bookName,
           chapterName: h.chapterName,
           arabic: h.arabic,
-          text: h.text,
-          narrator: h.narrator,
+          text: langTranslation?.text || h.text,
+          narrator: langTranslation?.narrator || h.narrator,
           reference: h.reference,
         });
       });

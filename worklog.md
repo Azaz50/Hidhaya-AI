@@ -121,3 +121,87 @@ Stage Summary:
 - AI chat with LLM integration, Quran/Hadith/Dua search with references
 - Dark mode, beginner mode, kids mode
 - Lint passes cleanly
+
+---
+Task ID: 3
+Agent: Performance Fix Agent
+Task: Fix Hadith Search API Performance - eliminate O(n*m) disk re-reading
+
+Work Log:
+- Read worklog and understood project context (Task 2-5 built the full app)
+- Read the problematic file `/home/z/my-project/src/app/api/hadith/search/route.ts`
+- Identified 3 performance issues:
+  1. O(n*m) disk re-reading: For each search result item with non-English language, the code re-read ALL hadith files from disk to find language-specific text
+  2. Redundant `allHadiths.find()`: The searchItems mapping did `allHadiths.find(ah => ah.id === h.id)` on items already from allHadiths — completely unnecessary
+  3. Fallback keyword search only searched English text, not language-specific text
+- Fix implementation:
+  1. Modified `FlatHadith` interface — added `translations` field as `Partial<Record<LangKey, { text: string; narrator: string }>>` to cache all language translations
+  2. Modified `getHadithData()` — when reading hadith JSON files, now populates all language translations (english, Hindi, Urdu, Bengali) into the `translations` field for each hadith
+  3. Modified GET handler — uses cached `translations` field to get language-specific text/narrator directly, no disk re-reading
+  4. Removed redundant `allHadiths.find()` call
+  5. Fixed fallback keyword search to also search language-specific text via cached translations
+- API contract unchanged — same request/response format
+- Performance improvement: O(1) language lookup from cache instead of O(n*m) disk reads
+- Lint passes cleanly
+- Tested all languages (English, Hindi, Urdu, Bengali) — correct translations returned
+- Tested fallback keyword search with Hindi text — works correctly
+
+Stage Summary:
+- Hadith search API performance fixed at `/home/z/my-project/src/app/api/hadith/search/route.ts`
+- Eliminated O(n*m) disk re-reading by caching all language translations during initial data load
+- Removed redundant allHadiths.find() call
+- Fallback keyword search now also checks language-specific text
+- All 4 languages tested and working correctly
+- API response format unchanged
+
+---
+Task ID: 2
+Agent: UI Polish Agent
+Task: Polish the Hidayah AI Frontend UI
+
+Work Log:
+- Read worklog and project context (previous tasks built full app with APIs, store, search, chat)
+- Read current page.tsx (1047 lines) and identified all 8 issues to fix
+- Read store.ts, bookmarks API route, Prisma schema to understand data flow
+- Verified framer-motion (^12.23.2) and Textarea component are available
+- Implemented all 8 improvements in a single comprehensive update:
+
+1. **Chat auto-scroll fix**: Replaced unreliable `scrollTop = scrollHeight` with scroll anchor div + `bottomRef.scrollIntoView({ behavior: 'smooth' })` via `requestAnimationFrame`. Added `<div ref={bottomRef} />` at end of message list.
+
+2. **Bookmark API persistence**: Updated QuranRefCard, HadithRefCard, and DuasPanel to POST to `/api/bookmarks` after adding to Zustand store. Added `isBookmarked`/`bookmarkedIds` state to prevent duplicate saves. Graceful error handling — bookmark stays in local store even if API fails.
+
+3. **Footer sticky fix**: Added `mt-auto` to footer element. Parent already has `min-h-screen flex flex-col`.
+
+4. **Share functionality**: Added `shareContent()` helper using Web Share API with clipboard fallback. Added Share2 button to QuranRefCard and HadithRefCard with toast notifications.
+
+5. **Chat input upgrade**: Replaced `Input` with `Textarea` component. Auto-resizing textarea (min 44px, max 120px). Larger send/clear buttons (h-11 w-11). Rounded-xl styling. Shift+Enter for new lines. Placeholder updated.
+
+6. **Framer-motion animations**:
+   - Tab content transitions: `AnimatePresence` + `motion.div` with fade + slide variants (key={activeTab})
+   - Message bubble animations: `motion.div` with opacity/y/scale transition
+   - Reference card hover: `whileHover` with scale 1.01 + shadow-md transition
+   - Welcome screen quick questions: staggered animation with delay
+
+7. **Welcome screen improvement**: Larger gradient icon (w-20 h-20), decorative glow background, bigger heading (text-2xl), richer description with colored text spans, rounded-xl disclaimer box, staggered quick question animations.
+
+8. **Mobile responsiveness**:
+   - Mode selector: Shows short labels (Std/Beg/Kids) on mobile, full labels on sm+
+   - Language selector: Narrower on mobile (w-[90px] vs w-[130px] on sm+)
+   - Padding adjustments: px-3 on mobile, sm:px-4 on larger
+   - Tab navigation: Icon-only on mobile, icon+label on sm+
+
+- Cleaned up unused imports: removed IslamicIcon, ChevronDown, ScrollArea, Switch, Separator, CardHeader, CardTitle
+- Lint passes cleanly with no errors
+- Dev server compiles successfully (200 response)
+
+Stage Summary:
+- All 8 UI polish improvements implemented in `/home/z/my-project/src/app/page.tsx`
+- Chat auto-scroll now reliable with scroll anchor + scrollIntoView
+- Bookmarks persist to database via POST /api/bookmarks
+- Footer properly sticky with mt-auto
+- Web Share API with clipboard fallback on reference cards
+- Chat input upgraded to auto-resizing Textarea
+- Framer-motion animations: tab transitions, message bubbles, card hovers
+- Welcome screen redesigned with gradient icon, glow, staggered animations
+- Mobile responsive mode selector and language selector
+- Lint passes cleanly
