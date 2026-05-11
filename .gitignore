@@ -53,7 +53,7 @@ server.log
 # Skills directory
 /skills/
 
-env
-vscode
-marscode
-zscripts
+.env
+.vscode
+.marscode
+.zscripts
