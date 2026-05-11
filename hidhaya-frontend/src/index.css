@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* ── Light Theme (Default) ── */
+  --color-background: hsl(140 20% 98%);
+  --color-foreground: hsl(160 30% 10%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(160 30% 10%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(160 30% 10%);
+  --color-primary: hsl(160 84% 39%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(150 20% 95%);
+  --color-secondary-foreground: hsl(160 30% 10%);
+  --color-muted: hsl(150 15% 94%);
+  --color-muted-foreground: hsl(160 10% 45%);
+  --color-accent: hsl(150 20% 93%);
+  --color-accent-foreground: hsl(160 30% 10%);
+  --color-destructive: hsl(0 84% 60%);
+  --color-border: hsl(150 20% 88%);
+  --color-input: hsl(150 20% 88%);
+  --color-ring: hsl(160 84% 39%);
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Font */
+  --font-sans: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+/* ═══════════════════════════════════════════
+   THEME: DARK (Free)
+   Deep emerald darkness
+   ═══════════════════════════════════════════ */
+.dark {
+  --color-background: hsl(160 20% 5%);
+  --color-foreground: hsl(140 15% 92%);
+  --color-card: hsl(160 18% 8%);
+  --color-card-foreground: hsl(140 15% 92%);
+  --color-popover: hsl(160 18% 8%);
+  --color-popover-foreground: hsl(140 15% 92%);
+  --color-primary: hsl(160 80% 45%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(160 15% 13%);
+  --color-secondary-foreground: hsl(140 15% 92%);
+  --color-muted: hsl(160 12% 14%);
+  --color-muted-foreground: hsl(160 8% 55%);
+  --color-accent: hsl(160 18% 12%);
+  --color-accent-foreground: hsl(140 15% 92%);
+  --color-destructive: hsl(0 62% 30%);
+  --color-border: hsl(160 18% 14%);
+  --color-input: hsl(160 18% 14%);
+  --color-ring: hsl(160 80% 45%);
+}
+
+/* ═══════════════════════════════════════════
+   THEME: OCEAN NIGHT (Logged-in)
+   Deep blue ocean vibes
+   ═══════════════════════════════════════════ */
+.theme-ocean {
+  --color-background: hsl(214 50% 7%);
+  --color-foreground: hsl(210 30% 92%);
+  --color-card: hsl(214 45% 10%);
+  --color-card-foreground: hsl(210 30% 92%);
+  --color-popover: hsl(214 45% 10%);
+  --color-popover-foreground: hsl(210 30% 92%);
+  --color-primary: hsl(199 89% 48%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(214 35% 14%);
+  --color-secondary-foreground: hsl(210 30% 92%);
+  --color-muted: hsl(214 30% 15%);
+  --color-muted-foreground: hsl(210 15% 55%);
+  --color-accent: hsl(214 40% 13%);
+  --color-accent-foreground: hsl(210 30% 92%);
+  --color-destructive: hsl(0 62% 35%);
+  --color-border: hsl(214 35% 16%);
+  --color-input: hsl(214 35% 16%);
+  --color-ring: hsl(199 89% 48%);
+}
+
+/* ═══════════════════════════════════════════
+   THEME: ROYAL GOLD (Premium)
+   Majestic golden warmth
+   ═══════════════════════════════════════════ */
+.theme-royal {
+  --color-background: hsl(35 30% 5%);
+  --color-foreground: hsl(40 25% 90%);
+  --color-card: hsl(35 25% 9%);
+  --color-card-foreground: hsl(40 25% 90%);
+  --color-popover: hsl(35 25% 9%);
+  --color-popover-foreground: hsl(40 25% 90%);
+  --color-primary: hsl(43 96% 56%);
+  --color-primary-foreground: hsl(35 40% 8%);
+  --color-secondary: hsl(35 20% 13%);
+  --color-secondary-foreground: hsl(40 25% 90%);
+  --color-muted: hsl(35 15% 14%);
+  --color-muted-foreground: hsl(35 10% 52%);
+  --color-accent: hsl(35 25% 12%);
+  --color-accent-foreground: hsl(40 25% 90%);
+  --color-destructive: hsl(0 62% 35%);
+  --color-border: hsl(35 20% 15%);
+  --color-input: hsl(35 20% 15%);
+  --color-ring: hsl(43 96% 56%);
+}
+
+/* ═══════════════════════════════════════════
+   THEME: ROSE GARDEN (Premium)
+   Elegant pink glow
+   ═══════════════════════════════════════════ */
+.theme-rose {
+  --color-background: hsl(330 25% 5%);
+  --color-foreground: hsl(330 15% 92%);
+  --color-card: hsl(330 22% 9%);
+  --color-card-foreground: hsl(330 15% 92%);
+  --color-popover: hsl(330 22% 9%);
+  --color-popover-foreground: hsl(330 15% 92%);
+  --color-primary: hsl(330 80% 60%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(330 18% 14%);
+  --color-secondary-foreground: hsl(330 15% 92%);
+  --color-muted: hsl(330 14% 15%);
+  --color-muted-foreground: hsl(330 10% 52%);
+  --color-accent: hsl(330 22% 12%);
+  --color-accent-foreground: hsl(330 15% 92%);
+  --color-destructive: hsl(0 62% 35%);
+  --color-border: hsl(330 18% 15%);
+  --color-input: hsl(330 18% 15%);
+  --color-ring: hsl(330 80% 60%);
+}
+
+/* ═══════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════ */
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, var(--color-primary) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Safe area for mobile notch / home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Theme transition */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+/* Opt out of auto-transition for animations */
+.no-theme-transition,
+.no-theme-transition * {
+  transition-property: none !important;
+}
