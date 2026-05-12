@@ -106,28 +106,44 @@ export function BookmarksPanel() {
 
   const fetchBookmarks = useCallback(async () => {
     // Get guestId from localStorage if user is not logged in
-    const guestId = typeof window !== 'undefined'
+    const currentGuestId = typeof window !== 'undefined'
       ? localStorage.getItem('hidhaya_guest_id')
       : null;
 
-    if (!user?.id && !guestId) return;
+    const currentUserId = user?.id;
+
+    if (!currentUserId && !currentGuestId) {
+      return;
+    }
 
     setLoading(true);
     try {
-      const query = user?.id ? `userId=${user.id}` : `guestId=${guestId}`;
-      const res = await fetch(`/api/bookmarks?${query}`);
+      const query = currentUserId ? `userId=${currentUserId}` : `guestId=${currentGuestId}`;
+      const token = localStorage.getItem('hidhaya_token');
+
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`/api/bookmarks?${query}`, { headers });
       const data = await res.json();
       setBookmarks(data.bookmarks || []);
-    } catch {
+    } catch (err) {
+      console.error('Failed to load bookmarks:', err);
       toast.error('Failed to load bookmarks');
     } finally {
       setLoading(false);
     }
   }, [user?.id]);
 
+  // Fetch bookmarks on mount
   useEffect(() => {
-    fetchBookmarks();
-  }, [fetchBookmarks]);
+    // Small delay to ensure localStorage is ready
+    setTimeout(() => {
+      fetchBookmarks();
+    }, 100);
+  }, []);
 
   const handleDelete = async (id) => {
     try {
@@ -138,7 +154,7 @@ export function BookmarksPanel() {
       const query = user?.id ? `userId=${user.id}` : (guestId ? `guestId=${guestId}` : '');
       await fetch(`/api/bookmarks/${id}${query ? '?' + query : ''}`, { method: 'DELETE' });
       setBookmarks((prev) => prev.filter((b) => b._id !== id));
-      toast.success('Bookmark removed');
+      toast.success('🗑️ Removed from Bookmarks', { duration: 2000 });
     } catch {
       toast.error('Failed to remove bookmark');
     }
@@ -150,6 +166,8 @@ export function BookmarksPanel() {
   // Check if user is truly not logged in (no user.id AND no guestId)
   const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
   const isLoggedOut = !user?.id && !guestId;
+
+  console.log('Bookmarks panel:', { userId: user?.id, guestId, isLoggedOut, bookmarkCount: bookmarks.length });
 
   if (isLoggedOut) {
     return (
@@ -196,7 +214,7 @@ export function BookmarksPanel() {
           </TabsList>
         </div>
 
-        <TabsContent value="quran" className="flex-1 mt-0 overflow-y-auto min-h-0">
+        <TabsContent value="quran" className="flex-1 mt-0 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <div className="p-4">
               {loading ? (
                 <div className="space-y-3">
@@ -232,7 +250,7 @@ export function BookmarksPanel() {
             </div>
         </TabsContent>
 
-        <TabsContent value="hadith" className="flex-1 mt-0 overflow-y-auto min-h-0">
+        <TabsContent value="hadith" className="flex-1 mt-0 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <div className="p-4">
               {loading ? (
                 <div className="space-y-3">

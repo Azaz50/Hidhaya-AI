@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+
 const navItems = [
   { id: 'chat', label: 'Chat', icon: MessageSquare },
   { id: 'quran', label: 'Quran Search', icon: BookOpen },
@@ -210,7 +211,7 @@ function SidebarContent({ onClose }) {
       <Separator className="flex-shrink-0 mx-4 w-auto border-[var(--color-sidebar-border)]" />
 
       {/* Chat History Section - Scrollable, takes remaining space */}
-      <div className="flex-1 min-h-[100px] flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {chatHistory.length > 0 && (
           <>
             <div className="flex-shrink-0 px-3 py-2">
@@ -253,7 +254,7 @@ function SidebarContent({ onClose }) {
         )}
       </div>
 
-      <Separator className="flex-shrink-0 mx-4 w-auto" />
+      <Separator className="flex-shrink-0 mx-4 w-auto border-[var(--color-sidebar-border)]" />
 
       {/* Footer - Fixed at bottom with beautiful usage bar */}
       <div className="flex-shrink-0 p-4 pt-3">

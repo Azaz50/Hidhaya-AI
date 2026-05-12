@@ -347,39 +347,61 @@ export function SearchPanel({ type }) {
   };
 
   const handleBookmark = async (ref, text) => {
-    // Get guestId if user not logged in
-    const guestId = !user?.id
+    // Get userId if logged in, otherwise guestId
+    const userId = user?.id;
+    const guestId = !userId
       ? localStorage.getItem('hidhaya_guest_id')
       : null;
+
+    // Get token for authenticated requests
+    const token = localStorage.getItem('hidhaya_token');
+
+    if (!ref) {
+      toast.error('Invalid reference');
+      return;
+    }
 
     try {
       const body = {
         type,
         reference: ref,
         text: text || '',
+        translation: text || '',
         language: language || 'english',
       };
 
-      // Build query string - guestId should be in query params, not body
+      // Build query string - userId or guestId should be in query params
       const queryParams = [];
-      if (guestId) {
+      if (userId) {
+        queryParams.push(`userId=${encodeURIComponent(userId)}`);
+      } else if (guestId) {
         queryParams.push(`guestId=${encodeURIComponent(guestId)}`);
       }
 
       const queryString = queryParams.length > 0 ? '?' + queryParams.join('&') : '';
 
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/bookmarks${queryString}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       });
+
       const data = await res.json();
+
       if (data._id) {
-        toast.success('Bookmarked');
+        toast.success('✓ Saved to Bookmarks', {
+          duration: 2000,
+          icon: '📚',
+        });
       } else {
         toast.error(data.message || 'Failed to bookmark');
       }
-    } catch {
+    } catch (err) {
       toast.error('Failed to bookmark');
     }
   };

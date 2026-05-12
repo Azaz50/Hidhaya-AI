@@ -39,14 +39,14 @@ function TypingIndicator() {
   return (
     <div className="flex items-center gap-2 px-4 py-3">
       <div className="flex items-center gap-1.5">
-        <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" />
-        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Hidhaya AI is thinking</span>
+        <Sparkles className="w-3 h-3 text-[var(--color-primary)] animate-pulse" />
+        <span className="text-xs text-[var(--color-primary)] font-medium">Hidhaya AI is thinking</span>
       </div>
       <div className="flex gap-1">
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-emerald-400 dark:bg-emerald-500"
+            className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]"
             animate={{ y: [0, -4, 0] }}
             transition={{
               duration: 0.6,
@@ -74,32 +74,32 @@ function QuranReferenceCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/40 dark:to-green-950/30 overflow-hidden shadow-sm">
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-accent)] overflow-hidden shadow-sm">
         <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center gap-2.5 p-3 text-left hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20 transition-colors">
-            <div className="w-7 h-7 rounded-md bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <button className="w-full flex items-center gap-2.5 p-3 text-left hover:bg-[var(--color-muted)] transition-colors">
+            <div className="w-7 h-7 rounded-md bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0">
+              <BookOpen className="w-3.5 h-3.5 text-[var(--color-primary)]" />
             </div>
-            <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300 flex-1">{reference}</span>
+            <span className="text-sm font-semibold text-[var(--color-foreground)] flex-1">{reference}</span>
             {open ? (
-              <ChevronUp className="w-3.5 h-3.5 text-emerald-500" />
+              <ChevronUp className="w-3.5 h-3.5 text-[var(--color-primary)]" />
             ) : (
-              <ChevronDown className="w-3.5 h-3.5 text-emerald-500" />
+              <ChevronDown className="w-3.5 h-3.5 text-[var(--color-primary)]" />
             )}
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="px-3 pb-3 pt-0">
-            <div className="border-t border-emerald-200/60 dark:border-emerald-800/40 pt-2">
+            <div className="border-t border-[var(--color-border)] pt-2">
               <div className="relative pl-3">
-                <Quote className="absolute left-0 top-0.5 w-3 h-3 text-emerald-400 dark:text-emerald-600 rotate-180" />
-                <p className="text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed italic">{text}</p>
+                <Quote className="absolute left-0 top-0.5 w-3 h-3 text-[var(--color-primary)] rotate-180" />
+                <p className="text-sm text-[var(--color-foreground)] leading-relaxed italic">{text}</p>
               </div>
               {onBookmark && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-2 h-6 text-[10px] gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                  className="mt-2 h-6 text-[10px] gap-1 text-[var(--color-primary)] hover:opacity-80"
                   onClick={(e) => {
                     e.stopPropagation();
                     onBookmark();
@@ -131,16 +131,16 @@ function HadithReferenceCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="rounded-lg border border-amber-200/80 dark:border-amber-800/50 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 overflow-hidden shadow-sm">
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 overflow-hidden shadow-sm">
         <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center gap-2.5 p-3 text-left hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors">
-            <div className="w-7 h-7 rounded-md bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
-              <Library className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          <button className="w-full flex items-center gap-2.5 p-3 text-left hover:bg-amber-500/10 transition-colors">
+            <div className="w-7 h-7 rounded-md bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <Library className="w-3.5 h-3.5 text-amber-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">{reference}</span>
+              <span className="text-sm font-semibold text-[var(--color-foreground)]">{reference}</span>
               {collection && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-500 ml-1.5">• {collection}</span>
+                <span className="text-[10px] text-amber-500 ml-1.5">• {collection}</span>
               )}
             </div>
             {open ? (
@@ -152,16 +152,16 @@ function HadithReferenceCard({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="px-3 pb-3 pt-0">
-            <div className="border-t border-amber-200/50 dark:border-amber-800/30 pt-2">
+            <div className="border-t border-amber-500/20 pt-2">
               <div className="relative pl-3">
-                <Quote className="absolute left-0 top-0.5 w-3 h-3 text-amber-400 dark:text-amber-600 rotate-180" />
-                <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed italic">{text}</p>
+                <Quote className="absolute left-0 top-0.5 w-3 h-3 text-amber-500 rotate-180" />
+                <p className="text-sm text-[var(--color-foreground)] leading-relaxed italic">{text}</p>
               </div>
               {onBookmark && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-2 h-6 text-[10px] gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300"
+                  className="mt-2 h-6 text-[10px] gap-1 text-amber-500 hover:opacity-80"
                   onClick={(e) => {
                     e.stopPropagation();
                     onBookmark();
@@ -184,13 +184,13 @@ function HadithReferenceCard({
 // ============================================================
 
 const SECTION_ICONS = {
-  'title': { icon: Sparkles, color: 'text-emerald-600 dark:text-emerald-400' },
-  'short summary': { icon: Lightbulb, color: 'text-emerald-500 dark:text-emerald-400' },
-  'quran guidance': { icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400' },
-  'hadith guidance': { icon: Library, color: 'text-amber-600 dark:text-amber-400' },
-  'simple explanation': { icon: HandHeart, color: 'text-emerald-500 dark:text-emerald-400' },
-  'practical steps': { icon: Footprints, color: 'text-emerald-600 dark:text-emerald-400' },
-  'closing message': { icon: Heart, color: 'text-rose-500 dark:text-rose-400' },
+  'title': { icon: Sparkles, color: 'text-[var(--color-primary)]' },
+  'short summary': { icon: Lightbulb, color: 'text-[var(--color-primary)]' },
+  'quran guidance': { icon: BookOpen, color: 'text-[var(--color-primary)]' },
+  'hadith guidance': { icon: Library, color: 'text-amber-500' },
+  'simple explanation': { icon: HandHeart, color: 'text-[var(--color-primary)]' },
+  'practical steps': { icon: Footprints, color: 'text-[var(--color-primary)]' },
+  'closing message': { icon: Heart, color: 'text-rose-500' },
 };
 
 function getSectionIcon(sectionTitle) {
@@ -198,7 +198,7 @@ function getSectionIcon(sectionTitle) {
   for (const [key, val] of Object.entries(SECTION_ICONS)) {
     if (lower.includes(key)) return val;
   }
-  return { icon: Sparkles, color: 'text-emerald-500' };
+  return { icon: Sparkles, color: 'text-[var(--color-primary)]' };
 }
 
 // ============================================================
@@ -217,7 +217,7 @@ function ChatBubble({ message, onBookmark }) {
         className="flex justify-end"
       >
         <div className="max-w-[85%] md:max-w-[75%]">
-          <div className="bg-emerald-600 dark:bg-emerald-700 text-white rounded-2xl rounded-br-md px-4 py-2.5 shadow-sm">
+          <div className="bg-[var(--color-primary)] text-[var(--color-primary-foreground)] rounded-2xl rounded-br-md px-4 py-2.5 shadow-sm">
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
           </div>
         </div>
@@ -236,12 +236,12 @@ function ChatBubble({ message, onBookmark }) {
       className="flex justify-start"
     >
       <div className="max-w-[85%] md:max-w-[75%]">
-        <div className="bg-card border border-emerald-100 dark:border-emerald-900/50 rounded-2xl rounded-bl-md shadow-sm overflow-hidden">
+        <div className="bg-card border border-[var(--color-border)] rounded-2xl rounded-bl-md shadow-sm overflow-hidden">
           {/* AI Header */}
           <div className="px-4 py-3 pb-0">
             <div className="flex items-center gap-1.5 mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Hidhaya AI</span>
+              <Sparkles className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+              <span className="text-xs font-medium text-[var(--color-primary)]">Hidhaya AI</span>
             </div>
           </div>
 
@@ -254,12 +254,12 @@ function ChatBubble({ message, onBookmark }) {
 
           {/* References */}
           {message.references && (
-            <div className="border-t border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/10 px-3 py-3 space-y-3">
+            <div className="border-t border-[var(--color-border)] bg-[var(--color-muted)] px-3 py-3 space-y-3">
               {message.references.quran.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2 px-1">
-                    <BookOpen className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    <BookOpen className="w-3 h-3 text-[var(--color-primary)]" />
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)]">
                       Quran References
                     </p>
                   </div>
@@ -368,7 +368,7 @@ function SectionRenderer({ section }) {
 
   return (
     <div className={`mb-3 last:mb-0 ${
-      isClosingSection ? 'mt-3 pt-3 border-t border-emerald-100 dark:border-emerald-900/30' : ''
+      isClosingSection ? 'mt-3 pt-3 border-t border-[var(--color-border)]' : ''
     }`}>
       {/* Section header */}
       {section.title && (
@@ -378,12 +378,12 @@ function SectionRenderer({ section }) {
           <SectionIcon className={`w-3.5 h-3.5 ${color} flex-shrink-0`} />
           <h3 className={`text-sm font-bold ${
             isQuranSection
-              ? 'text-emerald-700 dark:text-emerald-400'
+              ? 'text-[var(--color-primary)]'
               : isHadithSection
               ? 'text-amber-700 dark:text-amber-400'
               : isClosingSection
               ? 'text-rose-600 dark:text-rose-400'
-              : 'text-emerald-800 dark:text-emerald-300'
+              : 'text-[var(--color-foreground)]'
           }`}>
             {section.title}
           </h3>
@@ -411,7 +411,7 @@ function SectionRenderer({ section }) {
           </div>
         ) : isClosingSection ? (
           // Closing — soft, warm style
-          <div className="text-emerald-700 dark:text-emerald-300 italic">
+          <div className="text-[var(--color-foreground)] italic">
             {section.content.split('\n').map((line, i) => renderLine(line, i, 'closing'))}
           </div>
         ) : (
@@ -445,7 +445,7 @@ function renderLine(line, i, context) {
   // Lines starting with "— " (em dash attribution)
   if (trimmed.startsWith('—') || trimmed.startsWith('–')) {
     return (
-      <p key={i} className="text-xs text-emerald-500 dark:text-emerald-400 font-medium pl-4">
+      <p key={i} className="text-xs text-[var(--color-primary)] dark:text-emerald-400 font-medium pl-4">
         {renderInlineMarkdown(trimmed)}
       </p>
     );
@@ -468,8 +468,8 @@ function renderPracticalLine(line, i) {
   if (numMatch) {
     return (
       <div key={i} className="flex items-start gap-2">
-        <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">{numMatch[1]}</span>
+        <span className="w-5 h-5 rounded-full bg-emerald-100 bg-[var(--color-primary)]900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <span className="text-[10px] font-bold text-[var(--color-primary)]">{numMatch[1]}</span>
         </span>
         <span className="flex-1 text-foreground">{renderInlineMarkdown(numMatch[2])}</span>
       </div>
@@ -521,14 +521,14 @@ function LimitReachedOverlay() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-100 to-amber-100 dark:from-emerald-900/40 dark:to-amber-900/40 flex items-center justify-center mx-auto mb-5"
         >
-          <Moon className="w-9 h-9 text-emerald-600 dark:text-emerald-400" />
+          <Moon className="w-9 h-9 text-[var(--color-primary)]" />
         </motion.div>
 
         <motion.h2
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-xl font-bold text-emerald-800 dark:text-emerald-300 mb-2"
+          className="text-xl font-bold text-[var(--color-foreground)] mb-2"
         >
           Continue Your Islamic Journey
         </motion.h2>
@@ -549,10 +549,10 @@ function LimitReachedOverlay() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.35 }}
-          className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 mb-6 border border-emerald-100 dark:border-emerald-900/50"
+          className="bg-emerald-50 bg-[var(--color-primary)]950/30 rounded-lg p-3 mb-6 border border-emerald-100 dark:border-emerald-900/50"
         >
           <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-emerald-700 dark:text-emerald-400">Daily limit resets at midnight.</span>{' '}
+            <span className="font-medium text-[var(--color-primary)]">Daily limit resets at midnight.</span>{' '}
             Come back tomorrow for more questions, or upgrade now.
           </p>
         </motion.div>
@@ -573,7 +573,7 @@ function LimitReachedOverlay() {
 
           {isGuest && (
             <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-11"
+              className="w-full bg-[var(--color-primary)] hover:bg-emerald-700 text-white gap-2 h-11"
               onClick={() => setShowAuthDialog(true)}
             >
               <LogIn className="w-4 h-4" />
@@ -600,7 +600,7 @@ function LimitReachedOverlay() {
               const Icon = item.icon;
               return (
                 <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Icon className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                  <Icon className="w-3.5 h-3.5 text-[var(--color-primary)] flex-shrink-0" />
                   <span>{item.text}</span>
                 </div>
               );
@@ -895,10 +895,10 @@ export function ChatPanel() {
               transition={{ duration: 0.4 }}
               className="text-center max-w-lg"
             >
-              <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+              <div className="w-16 h-16 rounded-2xl bg-emerald-100 bg-[var(--color-primary)]900/30 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-8 h-8 text-[var(--color-primary)]" />
               </div>
-              <h2 className="text-xl font-semibold text-emerald-800 dark:text-emerald-300 mb-2">
+              <h2 className="text-xl font-semibold text-[var(--color-foreground)] mb-2">
                 Ask anything about Islam
               </h2>
               <p className="text-sm text-muted-foreground mb-8">
@@ -913,7 +913,7 @@ export function ChatPanel() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
                     onClick={() => handleSuggestionClick(q)}
-                    className="text-left text-sm px-3.5 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 transition-colors text-foreground"
+                    className="text-left text-sm px-3.5 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/50 bg-[var(--color-primary)]950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 transition-colors text-foreground"
                   >
                     {q}
                   </motion.button>
@@ -952,7 +952,7 @@ export function ChatPanel() {
                   {isGuest && (
                     <Button
                       size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 flex-1"
+                      className="bg-[var(--color-primary)] hover:bg-emerald-700 text-white gap-1.5 flex-1"
                       onClick={() => setShowAuthDialog(true)}
                     >
                       <LogIn className="w-3.5 h-3.5" />
@@ -978,7 +978,7 @@ export function ChatPanel() {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-background p-3">
+      <div className="border-t border-[var(--color-border)] bg-[var(--color-card)] p-3">
         <div className="flex items-end gap-2 max-w-3xl mx-auto">
           <div className="flex-1 relative">
             <Textarea
@@ -990,7 +990,7 @@ export function ChatPanel() {
               className={`min-h-[44px] max-h-[120px] resize-none pr-3 ${
                 isLimitReached
                   ? 'opacity-50 cursor-not-allowed bg-muted/50 border-muted'
-                  : 'border-emerald-200 dark:border-emerald-800 focus-visible:ring-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/20'
+                  : 'border-emerald-200 dark:border-emerald-800 focus-visible:ring-emerald-500/30 bg-emerald-50/30 bg-[var(--color-primary)]950/20'
               }`}
               rows={1}
               disabled={isLoading || isLimitReached}
@@ -1012,7 +1012,7 @@ export function ChatPanel() {
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200/50 dark:shadow-red-900/30'
                   : isLimitReached
                   ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200/50 dark:shadow-emerald-900/30'
+                  : 'bg-[var(--color-primary)] hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200/50 dark:shadow-emerald-900/30'
               }`}
               size="icon"
             >
