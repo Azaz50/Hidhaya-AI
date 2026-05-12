@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  MessageSquare,
   BookmarkPlus,
   Lock,
   LogIn,
@@ -21,18 +20,25 @@ import {
   Footprints,
   HandHeart,
   Lightbulb,
+  Brain,
+  Umbrella,
+  Shield,
+  Sun,
+  Users,
+  CloudRain,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import hidhayaLogo from '@/assets/hidhaya-favicon.png';
 
 const suggestedQuestions = [
-  'How to control anger in Islam?',
-  'What does Islam say about depression?',
-  'How to practice sabr (patience)?',
-  'What is the importance of honesty?',
-  'Dua for anxiety and worry',
-  'Islam on kindness to parents',
+  { text: 'How to control anger in Islam?', icon: Shield },
+  { text: 'What does Islam say about depression?', icon: Heart },
+  { text: 'How to practice sabr (patience)?', icon: Sun },
+  { text: 'What is the importance of honesty?', icon: Lightbulb },
+  { text: 'Dua for anxiety and worry', icon: CloudRain },
+  { text: 'Islam on kindness to parents', icon: Users },
 ];
 
 function TypingIndicator() {
@@ -239,9 +245,9 @@ function ChatBubble({ message, onBookmark }) {
         <div className="bg-card border border-[var(--color-border)] rounded-2xl rounded-bl-md shadow-sm overflow-hidden">
           {/* AI Header */}
           <div className="px-4 py-3 pb-0">
-            <div className="flex items-center gap-1.5 mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-              <span className="text-xs font-medium text-[var(--color-primary)]">Hidhaya AI</span>
+            <div className="flex items-center gap-2 mb-3">
+              <img src={hidhayaLogo} alt="Hidhaya" className="w-8 h-8 object-contain" />
+              <span className="text-sm font-semibold text-[var(--color-foreground)]">Hidhaya AI</span>
             </div>
           </div>
 
@@ -896,13 +902,14 @@ export function ChatPanel() {
               className="text-center max-w-lg"
             >
               <div className="w-16 h-16 rounded-2xl bg-emerald-100 bg-[var(--color-primary)]900/30 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-8 h-8 text-[var(--color-primary)]" />
+                <img src={hidhayaLogo} alt="Hidhaya" className="w-10 h-10 object-contain" />
               </div>
+              <p className="text-lg font-semibold text-[var(--color-primary)] mb-2">As-salamu alaykum</p>
               <h2 className="text-xl font-semibold text-[var(--color-foreground)] mb-2">
                 Ask anything about Islam
               </h2>
               <p className="text-sm text-muted-foreground mb-8">
-                Get guidance from Quran and authentic Hadith with AI-powered answers
+                Get guidance from Quran and authentic Hadith with Hidhaya-AI answers
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-md mx-auto">
@@ -912,10 +919,11 @@ export function ChatPanel() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
-                    onClick={() => handleSuggestionClick(q)}
-                    className="text-left text-sm px-3.5 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/50 bg-[var(--color-primary)]950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 transition-colors text-foreground"
+                    onClick={() => handleSuggestionClick(q.text)}
+                    className="flex items-center gap-3 text-left text-sm px-3.5 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-accent)] hover:bg-[var(--color-muted)] transition-colors text-[var(--color-foreground)]"
                   >
-                    {q}
+                    <q.icon className="w-4 h-4 text-[var(--color-primary)] flex-shrink-0" />
+                    <span>{q.text}</span>
                   </motion.button>
                 ))}
               </div>

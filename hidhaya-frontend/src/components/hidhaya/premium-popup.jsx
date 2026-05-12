@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useHidhayaStore } from '@/store/hidhaya-store';
-import { Crown, Sparkles, Zap, BookOpen, Mic, UserCheck, LogIn } from 'lucide-react';
+import { Crown, Sparkles, Zap, BookOpen, Mic, UserCheck, LogIn, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const features = [
@@ -25,9 +25,15 @@ export function PremiumPopup() {
 
   return (
     <Dialog open={showPremiumPopup} onOpenChange={setShowPremiumPopup}>
-      <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden border-amber-200 dark:border-amber-800">
+      <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden border-amber-200 dark:border-amber-800 [&>button]:hidden">
         {/* Gold gradient header */}
         <div className="bg-gradient-to-br from-amber-500 via-amber-400 to-yellow-400 p-6 text-white relative overflow-hidden">
+          <button
+            onClick={() => setShowPremiumPopup(false)}
+            className="absolute right-3 top-3 z-20 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4" style={{ color: '#FFFFFF' }} />
+          </button>
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-2 left-6 text-6xl">&#9734;</div>
             <div className="absolute bottom-1 right-8 text-4xl">&#9733;</div>
@@ -36,14 +42,14 @@ export function PremiumPopup() {
           <DialogHeader className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
               <Crown className="w-6 h-6" />
-              <Badge className="bg-white/20 text-white border-white/30 text-xs">
+              <Badge className="bg-white/20 font-medium text-white border-white/30 text-xs">
                 PREMIUM
               </Badge>
             </div>
             <DialogTitle className="text-2xl font-bold text-white">
               Unlock Full Access
             </DialogTitle>
-            <DialogDescription className="text-amber-100">
+            <DialogDescription className="text-white font-medium">
               {isGuest
                 ? "You've reached your 10 free questions today"
                 : "You've reached your daily question limit"}
@@ -74,7 +80,7 @@ export function PremiumPopup() {
           <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20 rounded-xl p-4 text-center mb-4 border border-amber-100 dark:border-amber-900/30">
             <p className="text-sm text-muted-foreground mb-1">Starting at</p>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-3xl font-bold text-amber-700 dark:text-amber-400">&#8377;199</span>
+              <span className="text-3xl font-bold text-amber-700 dark:text-amber-400">&#8377;99</span>
               <span className="text-sm text-muted-foreground">/month</span>
             </div>
           </div>
@@ -82,7 +88,7 @@ export function PremiumPopup() {
           {/* Actions */}
           <div className="space-y-2">
             <Button
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg shadow-amber-200 dark:shadow-amber-900/30"
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-foreground)]"
               onClick={() => {
                 toast.info('Premium coming soon InshaAllah');
                 setShowPremiumPopup(false);
@@ -96,7 +102,7 @@ export function PremiumPopup() {
             {isGuest && (
               <Button
                 variant="outline"
-                className="w-full border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                className="w-full border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
                 onClick={() => {
                   setShowPremiumPopup(false);
                   setShowAuthDialog(true);

@@ -161,7 +161,7 @@ export function AuthDialog() {
     <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
       <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-xl text-emerald-800 dark:text-emerald-300">
+          <DialogTitle className="text-xl text-[var(--color-primary)]">
             Welcome to Hidhaya
           </DialogTitle>
           <DialogDescription>
@@ -171,11 +171,11 @@ export function AuthDialog() {
 
         <div className="p-6">
           <Tabs value={tab} onValueChange={setTab} className="w-full">
-            <TabsList className="w-full mb-4 bg-emerald-50 dark:bg-emerald-950/30">
-              <TabsTrigger value="login" className="flex-1 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+            <TabsList className="w-full mb-4 bg-[var(--color-accent)]">
+              <TabsTrigger value="login" className="flex-1 data-[state=active]:bg-[var(--color-primary)] data-[state=active]:text-[var(--color-primary-foreground)]">
                 Login
               </TabsTrigger>
-              <TabsTrigger value="register" className="flex-1 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+              <TabsTrigger value="register" className="flex-1 data-[state=active]:bg-[var(--color-primary)] data-[state=active]:text-[var(--color-primary-foreground)]">
                 Register
               </TabsTrigger>
             </TabsList>
@@ -212,7 +212,7 @@ export function AuthDialog() {
               <Button
                 onClick={handleEmailLogin}
                 disabled={loading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-foreground)]"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign In'}
               </Button>
@@ -263,7 +263,7 @@ export function AuthDialog() {
               <Button
                 onClick={handleRegister}
                 disabled={loading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-foreground)]"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
               </Button>
@@ -281,7 +281,7 @@ export function AuthDialog() {
             variant="outline"
             onClick={handleGuestContinue}
             disabled={loading}
-            className="w-full border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+            className="w-full border-[var(--color-primary)]/30 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
           >
             Continue
           </Button>
