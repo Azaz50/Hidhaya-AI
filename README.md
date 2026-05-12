@@ -154,8 +154,11 @@ hidhaya-ai/
 ├── docs/
 │
 └── README.md
+```
 
 ---
+
+
 
 
 # 🚀 Core Goals
