@@ -133,6 +133,7 @@ If no exact reference exists:
 
 ---
 
+
 # 📂 Project Structure
 
 ```bash
@@ -153,6 +154,8 @@ hidhaya-ai/
 ├── docs/
 │
 └── README.md
+
+---
 
 
 # 🚀 Core Goals
@@ -200,3 +203,4 @@ hidhaya-ai/
 ---
 
 - Make authentic Islamic knowledge simple, accessible, and trustworthy for everyone.
+
