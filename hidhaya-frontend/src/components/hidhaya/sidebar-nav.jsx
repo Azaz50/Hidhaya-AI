@@ -316,7 +316,7 @@ function SidebarContent({ onClose }) {
 
 export function SidebarNav() {
   return (
-    <aside className="hidden md:flex w-[280px] border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar-bg)] h-[100dvh] overflow-y-auto">
+    <aside className="hidden md:flex border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar-bg)] h-[100dvh]">
       <SidebarContent />
     </aside>
   );
