@@ -155,40 +155,48 @@ hidhaya-ai/
 └── README.md
 
 
-🚀 Core Goals
+# 🚀 Core Goals
 
-Hidhaya AI aims to become:
+---
 
-Authentic Islamic AI
-Quran & Hadith Reference-Based
-Emotionally Intelligent
-Multi-language
-Beginner Friendly
-Scalable for Millions of Records
-Trust-Focused
-📌 Important Philosophy
+## Hidhaya AI aims to become:
 
-“Authenticity first, intelligent guidance second.”
+- Authentic Islamic AI
+- Quran & Hadith Reference-Based
+- Emotionally Intelligent
+- Multi-language
+- Beginner Friendly
+- Scalable for Millions of Records
+- Trust-Focused
 
-🔮 Future Features
-Voice AI
-Islamic learning roadmap
-AI memorization assistant
-Kids Mode
-Personalized Islamic plans
-Vector Search
-Scholar Dashboard
-Mobile App
-🤝 Contribution
+## 📌 Important Philosophy
 
-Contributions, suggestions, and improvements are welcome.
+- “Authenticity first, intelligent guidance second.”
 
-📜 License
+# 🔮 Future Features
+- Voice AI
+- Islamic learning roadmap
+- AI memorization assistant
+- Kids Mode
+- Personalized Islamic plans
+- Vector Search
+- Scholar Dashboard
+- Mobile App
 
-This project is for educational and Islamic guidance purposes.
+## 🤝 Contribution
 
-Please verify important religious matters with qualified Islamic scholars.
+- Contributions, suggestions, and improvements are welcome.
 
-❤️ Vision
+# 📜 License
 
-Make authentic Islamic knowledge simple, accessible, and trustworthy for everyone.
+---
+
+- This project is for educational and Islamic guidance purposes.
+
+- Please verify important religious matters with qualified Islamic scholars.
+
+# ❤️ Vision
+
+---
+
+- Make authentic Islamic knowledge simple, accessible, and trustworthy for everyone.

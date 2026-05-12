@@ -81,9 +81,20 @@ export function AuthDialog() {
       });
       const data = await res.json();
       if (data._id) {
-        setUser(data);
+        // Add 'id' field for consistency with frontend expectations
+        const userData = { ...data, id: data._id };
+
+        // Save token and user to localStorage for persistence
+        if (data.token) {
+          localStorage.setItem('hidhaya_token', data.token);
+        }
+        localStorage.setItem('hidhaya_user', JSON.stringify(userData));
+
+        setUser(userData);
         setLimitReached(false);
-        const usageRes = await fetch(`/api/chat/usage?userId=${data._id}`);
+        const usageRes = await fetch(`/api/chat/usage?userId=${data._id}`, {
+          headers: data.token ? { Authorization: `Bearer ${data.token}` } : {}
+        });
         const usageData = await usageRes.json();
         if (usageData.usedToday !== undefined) {
           setUsage(usageData);
@@ -115,9 +126,20 @@ export function AuthDialog() {
       });
       const data = await res.json();
       if (data._id) {
-        setUser(data);
+        // Add 'id' field for consistency with frontend expectations
+        const userData = { ...data, id: data._id };
+
+        // Save token and user to localStorage for persistence
+        if (data.token) {
+          localStorage.setItem('hidhaya_token', data.token);
+        }
+        localStorage.setItem('hidhaya_user', JSON.stringify(userData));
+
+        setUser(userData);
         setLimitReached(false);
-        const usageRes = await fetch(`/api/chat/usage?userId=${data._id}`);
+        const usageRes = await fetch(`/api/chat/usage?userId=${data._id}`, {
+          headers: data.token ? { Authorization: `Bearer ${data.token}` } : {}
+        });
         const usageData = await usageRes.json();
         if (usageData.usedToday !== undefined) {
           setUsage(usageData);

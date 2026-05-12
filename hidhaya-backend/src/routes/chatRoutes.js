@@ -31,6 +31,9 @@ router.get("/history", optionalAuth, getChatHistory);
 // Search in chat history (requires authentication)
 router.get("/history/search", auth, searchHistory);
 
+// Usage stats - MUST be before /:id route to avoid being caught as an id parameter
+router.get("/usage", optionalAuth, getUsage);
+
 // Get single chat (requires authentication)
 router.get("/:id", auth, getChat);
 
@@ -45,8 +48,5 @@ router.post("/:id/regenerate", auth, rateLimiter, regenerateResponse);
 
 // Search statistics (for debugging, requires authentication)
 router.get("/stats/search", auth, getSearchStats);
-
-// Usage stats (supports both user and guest)
-router.get("/usage", optionalAuth, getUsage);
 
 module.exports = router;

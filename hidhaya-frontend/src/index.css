@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Light Theme (Default) ── */
+  /* ── Base Colors (Light Theme Default) ── */
   --color-background: hsl(140 20% 98%);
   --color-foreground: hsl(160 30% 10%);
   --color-card: hsl(0 0% 100%);
@@ -21,6 +21,14 @@
   --color-border: hsl(150 20% 88%);
   --color-input: hsl(150 20% 88%);
   --color-ring: hsl(160 84% 39%);
+
+  /* ── Semantic Theme Colors (Light Theme) ── */
+  --color-sidebar-bg: hsl(0 0% 100%);
+  --color-sidebar-border: hsl(150 20% 88%);
+  --color-sidebar-text: hsl(160 30% 10%);
+  --color-sidebar-muted: hsl(160 10% 45%);
+  --color-sidebar-active-bg: hsl(160 84% 39%);
+  --color-sidebar-active-text: hsl(0 0% 100%);
 
   /* Radius */
   --radius-sm: 0.5rem;
@@ -55,6 +63,14 @@
   --color-border: hsl(160 18% 14%);
   --color-input: hsl(160 18% 14%);
   --color-ring: hsl(160 80% 45%);
+
+  /* Semantic Colors - Dark Theme */
+  --color-sidebar-bg: hsl(160 18% 8%);
+  --color-sidebar-border: hsl(160 18% 14%);
+  --color-sidebar-text: hsl(140 15% 92%);
+  --color-sidebar-muted: hsl(160 8% 55%);
+  --color-sidebar-active-bg: hsl(160 80% 45%);
+  --color-sidebar-active-text: hsl(0 0% 100%);
 }
 
 /* ═══════════════════════════════════════════
@@ -80,6 +96,14 @@
   --color-border: hsl(214 35% 16%);
   --color-input: hsl(214 35% 16%);
   --color-ring: hsl(199 89% 48%);
+
+  /* Semantic Colors - Ocean Theme */
+  --color-sidebar-bg: hsl(214 45% 10%);
+  --color-sidebar-border: hsl(214 35% 16%);
+  --color-sidebar-text: hsl(210 30% 92%);
+  --color-sidebar-muted: hsl(210 15% 55%);
+  --color-sidebar-active-bg: hsl(199 89% 48%);
+  --color-sidebar-active-text: hsl(0 0% 100%);
 }
 
 /* ═══════════════════════════════════════════
@@ -105,6 +129,14 @@
   --color-border: hsl(35 20% 15%);
   --color-input: hsl(35 20% 15%);
   --color-ring: hsl(43 96% 56%);
+
+  /* Semantic Colors - Royal Theme */
+  --color-sidebar-bg: hsl(35 25% 9%);
+  --color-sidebar-border: hsl(35 20% 15%);
+  --color-sidebar-text: hsl(40 25% 90%);
+  --color-sidebar-muted: hsl(35 10% 52%);
+  --color-sidebar-active-bg: hsl(43 96% 56%);
+  --color-sidebar-active-text: hsl(35 40% 8%);
 }
 
 /* ═══════════════════════════════════════════
@@ -130,6 +162,14 @@
   --color-border: hsl(330 18% 15%);
   --color-input: hsl(330 18% 15%);
   --color-ring: hsl(330 80% 60%);
+
+  /* Semantic Colors - Rose Theme */
+  --color-sidebar-bg: hsl(330 22% 9%);
+  --color-sidebar-border: hsl(330 18% 15%);
+  --color-sidebar-text: hsl(330 15% 92%);
+  --color-sidebar-muted: hsl(330 10% 52%);
+  --color-sidebar-active-bg: hsl(330 80% 60%);
+  --color-sidebar-active-text: hsl(0 0% 100%);
 }
 
 /* ═══════════════════════════════════════════

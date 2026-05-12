@@ -1,437 +1,541 @@
-Hidhaya AI — Backend Functionality & AI Search Engine PRD
-Objective
+Hidhaya AI — Final Product Requirements Document (PRD)
+Product Name
 
-Audit, verify, fix, and complete all backend APIs and core functionality for the Hidhaya AI project.
+Hidhaya AI
+Your Personal Islamic Companion
 
-The backend must become:
+1. Vision
 
-stable
-scalable
-modular
-AI-powered
-reference-safe
-production-ready
+Hidhaya AI is an advanced AI-powered Islamic guidance platform designed to provide authentic, emotionally supportive, and easy-to-understand Islamic answers using Quran and Hadith references.
 
-The system must prioritize:
+The platform allows users to ask questions naturally in:
 
-“Authentic Quran & Hadith references first, AI explanation second.”
-
-1. Authentication APIs
-Status
-
-User registration and login are already implemented.
-
-Required Tasks
-Verify all auth APIs are working properlyfirst of all check and fix all apis which are implemented or not implented for this project functionaliy like: 
-1. chat history
-2. user registration and login (it is done it's working now)
-3. quran search all apis (must be key words, surah ayat(2:34) , and below give to select word to search it's good for me)
-4. hadith search all apis (must be key words, narrator name , and below give to select word to search it's good for me)
-5. bookmarks all apis check and implemente or fix if any issue.
-6. kids mode api if have.
-7. and one of most important my gemini api is working properly check it and my given data of quran and hadith json for your reference that you give user from this data first ai answer is for simplification but my data json first for user references.
-6. and using ai make most powerful ai search for my data because i have millions of millions line of text in my all hadith and quran.
-
-Fix any validation or token issues
-Ensure secure JWT authentication
-Ensure refresh token handling
-Ensure protected routes work correctly
-Required APIs
-Auth
-POST /api/auth/register
-POST /api/auth/login
-POST /api/auth/logout
-GET /api/auth/me
-Requirements
-hashed passwords
-JWT auth
-secure middleware
-proper error handling
-validation
-rate limiting
-2. Chat History APIs
-Required Features
-
-Implement and verify full chat history functionality.
-
-Requirements
-
-Users should be able to:
-
-save chat history
-retrieve previous chats
-continue conversations
-delete chats
-paginate old chats
-Required APIs
-Chat
-POST /api/chat
-GET /api/chat/history
-GET /api/chat/:chatId
-DELETE /api/chat/:chatId
-Requirements
-
-Store:
-
-user question
-AI answer
-references
-timestamps
-language
-confidence score
-3. Quran Search APIs
-Required Features
-
-Build powerful Quran search APIs.
-
-Required Search Types
-Keyword Search
-
-Example:
-
-sabr
-iman
-shirk
-Ayah Search
-
-Example:
-
-2:34
-1:2
-Topic Search
-
-Example:
-
-patience
-forgiveness
-tawakkul
-Suggested Word Search
-
-Below search input:
-
-suggested keywords
-related Islamic concepts
-autocomplete words
-Required APIs
-Quran
-GET /api/quran/search
-GET /api/quran/surah/:id
-GET /api/quran/ayah/:surah/:ayah
-GET /api/quran/suggestions
-Requirements
-
-Search must support:
-
-Arabic
 English
-Urdu
 Hindi
+Urdu
 Bengali
 Roman Urdu
-4. Hadith Search APIs
-Required Features
 
-Build powerful Hadith search APIs.
+Example Questions:
 
-Required Search Types
-Keyword Search
+“Sabr kya hai?”
+“Iman kise kehte hain?”
+“How to control anger in Islam?”
+“Depression me kya dua padhe?”
+“Shirk kya hai?”
+“Bachon ki tarbiyah kaise karein?”
+
+The core mission is:
+
+“Make authentic Islamic knowledge simple, trustworthy, emotional, and accessible for everyone.”
+
+2. Main Goals
+
+The platform must:
+
+✅ Use Quran and Hadith references from the provided dataset only
+✅ Give emotionally supportive and simplified answers
+✅ Support multilingual understanding
+✅ Avoid hallucinated Islamic rulings
+✅ Build trust through authentic references
+✅ Handle semantic Islamic understanding intelligently
+✅ Scale for millions of Quran and Hadith records in future
+
+3. Core AI Philosophy
+
+Hidhaya AI is NOT a Mufti or scholar.
+
+The AI should:
+
+Explain Islam simply
+Use only provided references
+Never invent Hadith or Quran references
+Never generate fake authenticity grades
+Never give unsupported fatwas
+Encourage users respectfully
+Say “Please consult a qualified Islamic scholar” when confidence is low
+4. Current Scope
+
+Current Phase:
+
+✅ Web Application Only
+
+Future:
+
+React Native Mobile App
+iOS App
+Voice AI
+Scholar Dashboard
+AI Personalization
+5. Final Tech Stack
+Layer	Technology
+Frontend	Next.js + TypeScript
+Backend	Node.js + Express.js
+Database	MongoDB
+Cache	Redis
+Search Engine	Fuse.js + Semantic Search Engine
+AI Provider	Gemini / OpenAI
+Queue System	BullMQ
+Hosting Frontend	Vercel
+Hosting Backend	Railway / AWS
+Storage	Cloudflare R2
+6. Final Architecture
+Architecture Type
+Modular Monolith Architecture
+
+Frontend and backend must remain separate for clean scalability.
+
+7. Final Folder Structure
+hidhaya-ai/
+│
+├── frontend/                      # Next.js Frontend
+│
+│   ├── public/
+│   ├── src/
+│   │
+│   │   ├── app/
+│   │   ├── components/
+│   │   ├── features/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── store/
+│   │   ├── styles/
+│   │   ├── types/
+│   │   ├── utils/
+│   │   └── constants/
+│   │
+│   ├── package.json
+│   └── next.config.ts
+│
+│
+├── backend/                       # Express Backend
+│
+│   ├── src/
+│   │
+│   │   ├── modules/
+│   │   │
+│   │   ├── auth/
+│   │   ├── users/
+│   │   ├── ai/
+│   │   ├── quran/
+│   │   ├── hadith/
+│   │   ├── search/
+│   │   ├── chat/
+│   │   ├── bookmarks/
+│   │   ├── premium/
+│   │   ├── subscriptions/
+│   │   ├── payments/
+│   │   ├── analytics/
+│   │   ├── admin/
+│   │   └── notifications/
+│   │
+│   ├── shared/
+│   │
+│   │   ├── middleware/
+│   │   ├── helpers/
+│   │   ├── constants/
+│   │   ├── logger/
+│   │   ├── errors/
+│   │   ├── cache/
+│   │   └── security/
+│   │
+│   ├── ai/
+│   │
+│   │   ├── prompts/
+│   │   ├── providers/
+│   │   ├── moderation/
+│   │   ├── semantic-engine/
+│   │   ├── embeddings/
+│   │   └── rag/
+│   │
+│   ├── data/
+│   │
+│   │   ├── quran/
+│   │   │   └── quran.json
+│   │   │
+│   │   └── hadith/
+│   │       ├── bukhari.json
+│   │       ├── muslim.json
+│   │       ├── tirmidhi.json
+│   │       ├── abudawud.json
+│   │       ├── nasai.json
+│   │       ├── ibnmajah.json
+│   │       ├── ahmed.json
+│   │       └── other hadith collections
+│   │
+│   ├── database/
+│   │   ├── models/
+│   │   ├── migrations/
+│   │   └── seeders/
+│   │
+│   ├── jobs/
+│   ├── queues/
+│   ├── websocket/
+│   │
+│   ├── app.ts
+│   └── server.ts
+│
+├── docs/
+│   ├── PRD/
+│   ├── API/
+│   └── architecture/
+│
+├── package.json
+├── README.md
+└── .env
+8. Core AI System Architecture
+IMPORTANT
+
+The AI must NEVER directly answer from general knowledge first.
+
+Correct AI Flow
+Step 1 — User Question
 
 Example:
 
-sabr
-niyyah
-tawakkul
-Narrator Search
+“Sabr, Iman aur Taqwa kya hai?”
 
-Example:
+Step 2 — Query Normalization
 
-Abu Bakr
-Aisha
-Umar ibn Khattab
-Collection Search
+The system removes noise words:
 
-Example:
+Examples:
 
-Bukhari
-Muslim
-Abu Dawud
-Suggested Search Terms
+Input	Normalized
+“Iman kise kehte hai Islam me?”	iman
+“What is shirk?”	shirk
+“Bachon ki tarbiyah kaise kare?”	tarbiyah
+Step 3 — Cross-Language Semantic Understanding
 
-Autocomplete suggestions below search bar.
+The system understands meaning across languages.
 
-Required APIs
-Hadith
-GET /api/hadith/search
-GET /api/hadith/book/:bookId
-GET /api/hadith/:id
-GET /api/hadith/suggestions
-Exact Search Requirements
+Examples:
 
-When user searches:
+User Input	Topic
+dhairya	patience
+sabr	patience
+patience	patience
+गुस्सा	anger
+maafi	forgiveness
+tawakkul	trust_allah
+shirk	shirk
+Step 4 — Strong Search Pipeline
+4-Layer Search System
+Layer 1 — Exact Matching
 
-“Abu Bakr”
+Find exact phrase matches.
 
-results must prioritize:
-
-exact phrase matches
-exact narrator matches
-
-Avoid:
-
-Abu Hurairah
-unrelated similar names
-5. Bookmark APIs
-Required Features
-
-Verify and fix bookmark functionality.
-
-Users should be able to:
-
-bookmark Quran verses
-bookmark Hadith
-remove bookmarks
-view saved bookmarks
-Required APIs
-Bookmarks
-POST /api/bookmarks
-GET /api/bookmarks
-DELETE /api/bookmarks/:id
-Requirements
-
-Bookmarks must store:
-
-type (Quran/Hadith)
-reference
-userId
-timestamp
-6. Kids Mode APIs
-Required Features
-
-Check if Kids Mode exists.
-
-If missing:
-
-implement Kids Mode APIs
-Kids Mode Requirements
-
-Responses should:
-
-use very simple language
-avoid difficult topics
-avoid controversial discussions
-focus on manners, duas, stories, habits
-Required APIs
-Kids Mode
-POST /api/kids/chat
-GET /api/kids/topics
-7. Gemini AI Integration Verification
-Required Tasks
-
-Verify Gemini API integration completely.
-
-Check:
-
-API connectivity
-response generation
-timeout handling
-streaming support
-fallback handling
-error handling
-Important Requirement
-
-AI must NOT generate references independently.
-
-AI should first use:
-
-Quran dataset
-Hadith dataset
-
-Then:
-
-AI simplifies
-explains emotionally
-beautifies response
-8. Quran & Hadith Dataset Priority System
-VERY IMPORTANT
-
-The FIRST source of truth must always be:
-
-local Quran JSON
-local Hadith JSON
-
-AI is ONLY for:
-
-simplification
-emotional explanation
-formatting
-beginner-friendly understanding
-AI MUST NEVER
-invent references
-hallucinate Hadith
-generate fake verses
-use unsupported Islamic evidence
-9. Advanced AI Search Engine
-Goal
-
-Build an extremely powerful AI-powered Islamic retrieval engine capable of handling:
-
-millions of Quran lines
-millions of Hadith lines
-multi-language datasets
-10. AI Search Engine Requirements
-Required Features
-
-Implement:
-
-semantic search
-multilingual search
-intent detection
-synonym expansion
-topic mapping
-fuzzy search
-exact search
-narrator search
-transliteration matching
-typo tolerance
-11. Advanced Semantic Islamic Engine
-Required Features
-
-The AI engine must understand:
-
-Islamic concepts
-emotional meanings
-multiple languages
-related terminology
-spelling variations
-transliterations
-Supported Languages
-English
-Urdu
-Hindi
-Bengali
-Roman Urdu
-Arabic
-12. 4-Layer Search Pipeline
-Layer 1 — Exact Match
-
-Highest priority:
-
-exact keywords
-exact phrases
-Layer 2 — Relaxed Match
+Layer 2 — Relaxed Word Matching
 
 Partial word matching.
 
-Layer 3 — Semantic Expansion
-
-Expand concepts internally.
+Layer 3 — Semantic Topic Expansion
 
 Example:
 
-“dheeraj”
-→ sabr
-→ patience
-→ endurance
+shirk →
+polytheism
+idolatry
+associating partners with Allah
+false worship
+Layer 4 — Fuzzy Matching
 
-Layer 4 — Fuzzy Search
-
-Handle typos.
-
-Example:
+Misspellings supported:
 
 sherk → shirk
-13. Query Normalization Engine
-Goal
+imaan → iman
+gussa → anger
+9. Strong Semantic Islamic Engine
+VERY IMPORTANT
 
-Clean user query before searching.
+This is the heart of Hidhaya AI.
 
-Example
+The system must support:
 
-Input:
+✅ Hundreds of thousands of Islamic words
+✅ Multi-language semantic matching
+✅ Quran/Hadith topic understanding
+✅ Emotional Islamic understanding
+✅ Synonym detection
+✅ Concept relationships
 
-“Iman kise kahte hai Islam me?”
-
-Normalize to:
-
-iman
-
-Remove Noise Words
+Supported Languages
 English
-what is
-tell me about
-explain
-Roman Urdu
-kya hai
-kise kahte hai
-islam mein
 Hindi
-क्या है
-इस्लाम में
+Urdu
 Bengali
-কি
-কিভাবে
+Roman Urdu
 Arabic
-ما هو
-كيف
-14. Search Confidence System
-Confidence Levels
-Confidence	Behavior
-HIGH	Full Quran + Hadith answer
-MEDIUM	Semantic references + explanation
-LOW	Simplified Islamic understanding only
-15. Low Confidence Rules
+Semantic Mapping Requirements
 
-If no strong reference found:
+The engine must map:
 
-DO NOT
-hallucinate references
-generate fake Hadith
-create unsupported Islamic claims
-Instead Show
+synonyms
+emotional meanings
+related Islamic concepts
+transliterations
+Roman Urdu variations
+Hindi/Urdu mixed words
+Example
+sabr
+dhairya
+patience
+perseverance
+endurance
+صبر
+धैर्य
 
-“No exact reference was found in the current dataset. Please consult a qualified Islamic scholar.”
+All should map to:
 
-16. Large Scale Performance Requirements
+patience
+10. Islamic Concept Mapping
+
+The AI engine must support strong semantic mapping for all Islamic concepts.
+
+Examples:
+
+shirk
+tawheed
+iman
+taqwa
+sabr
+shukr
+tawakkul
+sunnah
+akhlaq
+haya
+sadaqah
+zakat
+jealousy
+backbiting
+parenting
+tarbiyah
+brotherhood
+forgiveness
+anger
+dua
+salah
+rizq
+halal
+haram
+akhirah
+jannah
+jahannam
+
+And thousands of related words.
+
+11. Quran & Hadith Data Rules
+STRICT RULES
+
+The AI MUST:
+
+✅ Use references only from provided JSON dataset
+✅ Never invent Quran references
+✅ Never invent Hadith references
+✅ Never invent Hadith grades
+✅ Never fake authenticity
+
+If Relevant Reference Not Found
+
+DO NOT hallucinate.
+
+Instead show:
+
+Currently, Hidhaya AI could not find a strong direct reference for this topic from the available dataset. We are continuously expanding our Quran and Hadith collections to improve authentic Islamic guidance. Please consult a qualified Islamic scholar for deeper understanding.
+12. AI Response Style
+
+The answer must be:
+
+✅ Emotional
+✅ Respectful
+✅ Beautifully structured
+✅ Beginner friendly
+✅ Practical
+✅ Authentic
+
+13. Final Response Structure
+{
+  "title": "",
+  "summary": "",
+  "quran_guidance": [],
+  "hadith_guidance": [],
+  "simple_explanation": "",
+  "practical_steps": [],
+  "closing_message": "",
+  "references": []
+}
+14. Language System
 IMPORTANT
 
-Do NOT use:
+If user selects Hindi:
 
-fs.readFile() for every request
-full JSON loading repeatedly
+→ Entire answer must be in Hindi
 
-Because:
+If user selects Urdu:
 
-datasets contain millions of lines
-17. Required Scalable Architecture
-Use
-MongoDB indexing
-preprocessed search indexes
-Redis caching
-chunked loading
-search token indexing
-optimized retrieval pipeline
-18. Recommended Technologies
-Layer	Recommended
-Backend	Node.js + Express
-Database	MongoDB
-Cache	Redis
-Search	Fuse.js + MongoDB Indexing
-AI	Gemini
-Queue	BullMQ
-Language	TypeScript
-19. Final Goal
+→ Entire answer must be in Urdu
 
-Hidhaya AI backend should become:
+If user selects Bengali:
 
-✅ scalable
-✅ stable
-✅ fast
-✅ semantic-search powered
-✅ multilingual
-✅ emotionally intelligent
-✅ highly accurate
-✅ authentic
-✅ Quran/Hadith reference-safe
-✅ production-ready
-✅ capable of handling millions of records
-✅ modular for future growth
+→ Entire answer must be in Bengali
+
+The AI must NEVER respond in another language after user selects language.
+
+15. Chat Features
+Required Features
+
+✅ AI Chat
+✅ Chat history
+✅ Scrollable chat history
+✅ Question cancel button while AI generating
+✅ Save chat history
+✅ Bookmark responses
+✅ Regenerate response
+✅ Copy response
+✅ Beautiful structured UI
+
+16. AI Reliability Improvements
+
+Current Issue:
+
+AI sometimes thinks for several minutes and fails.
+
+Required Fixes
+
+✅ Faster AI response generation
+✅ Better retrieval pipeline
+✅ Better search indexing
+✅ Optimized semantic engine
+✅ Better AI provider/model
+✅ Context chunk optimization
+✅ Timeout fallback handling
+
+If AI Fails
+
+Show graceful fallback:
+
+Hidhaya AI is trying to find authentic Islamic guidance from the available Quran and Hadith dataset. Please try again in a moment.
+
+NOT generic error messages.
+
+17. Search Quality Improvements
+Problems To Fix
+
+Example:
+
+Searching:
+
+abu bakr
+
+Should NOT return:
+
+abu hurairah
+Required Search Improvements
+
+✅ Exact phrase priority
+✅ Better ranking
+✅ Better token matching
+✅ Semantic confidence scoring
+✅ Multi-language indexing
+✅ Fuzzy threshold optimization
+
+18. Search Confidence System
+Confidence	Behavior
+HIGH	Full structured answer with references
+MEDIUM	Partial semantic answer
+LOW	General Islamic explanation without fake references
+19. Premium System
+Guest Limits
+
+Guest users:
+
+✅ Maximum 10 questions/day
+
+After limit:
+
+Show:
+
+Login popup
+Registration page
+Premium popup
+Registered Free Users
+
+20 questions/day
+
+Premium Plan
+Hidhaya Premium
+India
+
+₹199/month
+
+International
+
+Auto currency conversion using Stripe.
+
+Premium Features
+
+✅ Unlimited AI chats
+✅ Faster AI responses
+✅ Advanced explanations
+✅ Saved history
+✅ Premium themes
+✅ Future voice mode
+
+20. Payment Architecture
+Region	Provider
+India	Razorpay
+International	Stripe
+21. Redis Usage
+
+Redis must handle:
+
+daily question limits
+caching
+semantic search caching
+repeated query optimization
+22. Security Requirements
+
+✅ JWT Authentication
+✅ Rate limiting
+✅ Prompt sanitization
+✅ Input validation
+✅ API protection
+✅ Secure payment webhooks
+
+23. Performance Requirements
+
+✅ Fast responses
+✅ Cached semantic search
+✅ Indexed Quran/Hadith retrieval
+✅ Optimized AI prompts
+✅ Streaming responses
+✅ Lazy loading
+
+24. Future Scalability
+
+The architecture must support future:
+
+✅ Mobile apps
+✅ Millions of Hadith records
+✅ Full Quran semantic engine
+✅ Voice AI
+✅ Vector database
+✅ AI personalization
+✅ Scholar dashboards
+✅ Microservices migration
+
+25. Final Core Principle
+MOST IMPORTANT RULE
+
+Hidhaya AI’s biggest strength is:
+
+✅ Authentic Quran references
+✅ Authentic Hadith references
+✅ Simplified Islamic guidance
+✅ Emotional understanding
+✅ Multi-language support
+✅ Trust-building responses
+
+The AI must always prioritize:
+
+“Authenticity before intelligence.”

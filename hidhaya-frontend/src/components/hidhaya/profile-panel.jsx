@@ -93,6 +93,8 @@ export function ProfilePanel() {
     setUser(null);
     setUsage(null);
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('hidhaya_token');
+      localStorage.removeItem('hidhaya_user');
       localStorage.removeItem('hidhaya_guest_id');
     }
     toast.success('Signed out');
@@ -118,9 +120,9 @@ export function ProfilePanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-background">
+      <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-card)]">
         <div className="flex items-center gap-2">
-          <User className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <User className="w-5 h-5 text-[var(--color-primary)]" />
           <h2 className="text-lg font-semibold text-foreground">Profile</h2>
         </div>
       </div>
@@ -130,8 +132,8 @@ export function ProfilePanel() {
           {/* User Info Card */}
           <Card className="p-5">
             <div className="flex items-center gap-4">
-              <Avatar className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30">
-                <AvatarFallback className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-semibold text-lg">
+              <Avatar className="w-14 h-14 bg-[var(--color-accent)]">
+                <AvatarFallback className="bg-[var(--color-accent)] text-[var(--color-primary)] font-semibold text-lg">
                   {user?.name ? getInitials(user.name) : '?'}
                 </AvatarFallback>
               </Avatar>

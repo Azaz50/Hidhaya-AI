@@ -360,13 +360,15 @@ export function SearchPanel({ type }) {
         language: language || 'english',
       };
 
-      if (user?.id) {
-        body.userId = user.id;
-      } else if (guestId) {
-        body.guestId = guestId;
+      // Build query string - guestId should be in query params, not body
+      const queryParams = [];
+      if (guestId) {
+        queryParams.push(`guestId=${encodeURIComponent(guestId)}`);
       }
 
-      const res = await fetch('/api/bookmarks', {
+      const queryString = queryParams.length > 0 ? '?' + queryParams.join('&') : '';
+
+      const res = await fetch(`/api/bookmarks${queryString}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -385,12 +387,12 @@ export function SearchPanel({ type }) {
   return (
     <div className="flex flex-col h-full">
       {/* Search Header - fixed at top */}
-      <div className="flex-shrink-0 p-4 border-b border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-background">
+      <div className="flex-shrink-0 p-4 border-b border-[var(--color-border)] bg-[var(--color-card)]">
         <div className="flex items-center gap-2 mb-3">
           {isQuran ? (
-            <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <BookOpen className="w-5 h-5 text-[var(--color-primary)]" />
           ) : (
-            <Library className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <Library className="w-5 h-5 text-amber-500" />
           )}
           <h2 className="text-lg font-semibold text-foreground">
             {isQuran ? 'Quran Search' : 'Hadith Search'}

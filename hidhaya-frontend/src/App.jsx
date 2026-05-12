@@ -230,9 +230,9 @@ function Navbar() {
 // MOBILE BOTTOM TAB BAR
 // ═══════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════
-// USAGE PROGRESS BAR (shown on mobile)
+// USAGE PROGRESS BAR COMPONENT
 // ═══════════════════════════════════════════════════════
-function UsageProgressBar() {
+function UsageProgress({ showLabel = true, className = '' }) {
   const { usage, user } = useHidhayaStore()
 
   const usedToday = usage?.usedToday ?? 0
@@ -241,38 +241,79 @@ function UsageProgressBar() {
   const isPremium = user?.plan === 'premium'
   const isUnlimited = limit === -1
 
-  // Don't show for premium users with unlimited
-  if (isUnlimited) return null
+  if (isUnlimited) {
+    return (
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 ${className}`}>
+        <Crown className="w-4 h-4 text-amber-500" />
+        <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+          Premium Member - Unlimited
+        </span>
+      </div>
+    )
+  }
 
-  // Calculate percentage
   const percentage = limit > 0 ? Math.min((usedToday / limit) * 100, 100) : 0
 
-  // Color based on remaining
   const getColor = () => {
-    if (remaining <= 0) return 'bg-red-500'
-    if (remaining <= 3) return 'bg-amber-500'
-    return 'bg-emerald-500'
+    if (remaining <= 0) return 'from-red-500 to-red-600'
+    if (remaining <= 3) return 'from-amber-500 to-orange-500'
+    return 'from-emerald-500 to-teal-500'
+  }
+
+  const getBgColor = () => {
+    if (remaining <= 0) return 'bg-red-500/20'
+    if (remaining <= 3) return 'bg-amber-500/20'
+    return 'bg-emerald-500/20'
   }
 
   return (
-    <div className="md:hidden px-3 py-2 border-t border-border bg-card/90">
-      <div className="flex items-center justify-between text-xs mb-1">
-        <div className="flex items-center gap-1.5">
-          <Zap className={`w-3.5 h-3.5 ${remaining <= 0 ? 'text-red-500' : 'text-emerald-500'}`} />
-          <span className="text-muted-foreground">
-            {isPremium ? 'Premium' : user ? 'Free Plan' : 'Guest'}
+    <div className={`${className}`}>
+      {showLabel && (
+        <div className="flex items-center justify-between text-xs mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <Zap className={`w-3.5 h-3.5 ${remaining <= 0 ? 'text-red-500' : remaining <= 3 ? 'text-amber-500' : 'text-emerald-500'}`} />
+            <span className="text-muted-foreground font-medium">
+              {isPremium ? 'Premium' : user ? 'Free Plan' : 'Guest'}
+            </span>
+          </div>
+          <span className={`${remaining <= 0 ? 'text-red-500 font-bold' : remaining <= 3 ? 'text-amber-500 font-medium' : 'text-emerald-500 font-medium'}`}>
+            {remaining <= 0 ? 'Limit reached' : `${remaining}/${limit} left`}
           </span>
         </div>
-        <span className={`${remaining <= 0 ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>
-          {remaining <= 0 ? 'Limit reached' : `${remaining} left today`}
-        </span>
-      </div>
-      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+      )}
+      <div className={`h-2.5 w-full ${getBgColor()} rounded-full overflow-hidden`}>
         <div
-          className={`h-full ${getColor()} transition-all duration-300`}
+          className={`h-full bg-gradient-to-r ${getColor()} transition-all duration-500 rounded-full`}
           style={{ width: `${percentage}%` }}
         />
       </div>
+    </div>
+  )
+}
+
+// Mobile version
+function MobileUsageBar() {
+  return (
+    <div className="md:hidden px-3 py-3 border-t border-border bg-card/90">
+      <UsageProgress showLabel={true} />
+    </div>
+  )
+}
+
+// Desktop sidebar version
+function DesktopUsageBar() {
+  return (
+    <div className="hidden md:block p-4 border-t border-border bg-card/50">
+      <div className="flex items-center gap-2 mb-3">
+        <Zap className="w-4 h-4 text-primary" />
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Daily Usage
+        </span>
+      </div>
+      <UsageProgress showLabel={true} />
+      <p className="text-[10px] text-muted-foreground mt-2 text-center">
+        Resets at midnight
+      </p>
     </div>
   )
 }
@@ -371,7 +412,7 @@ function App() {
           <main className="flex-1 min-h-0 overflow-hidden">
             <MainContent />
           </main>
-          <UsageProgressBar />
+          <MobileUsageBar />
           <MobileBottomNav />
         </div>
       </div>

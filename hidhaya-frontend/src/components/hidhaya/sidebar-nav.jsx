@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { MessageSquare, BookOpen, Library, Bookmark, User, Plus, Trash2, Clock, MessageCircle } from 'lucide-react';
+import { MessageSquare, BookOpen, Library, Bookmark, User, Plus, Trash2, Clock, MessageCircle, Zap, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -52,8 +52,8 @@ function ChatHistoryItemRow({ chat, isActive, onSelect, onDelete }) {
     <div
       className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
         isActive
-          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
-          : 'hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400 text-muted-foreground'
+          ? 'bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)]'
+          : 'bg-transparent text-[var(--color-sidebar-muted)] hover:bg-[var(--color-accent)] hover:text-[var(--color-sidebar-text)]'
       }`}
       onClick={onSelect}
       onMouseEnter={() => setShowDelete(true)}
@@ -62,7 +62,7 @@ function ChatHistoryItemRow({ chat, isActive, onSelect, onDelete }) {
       <MessageCircle className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium truncate">{chat.title || 'Untitled Chat'}</p>
-        <p className="text-[10px] opacity-50">{timeAgo(chat.updatedAt)}</p>
+        <p className="text-[10px] opacity-60">{timeAgo(chat.updatedAt)}</p>
       </div>
       {showDelete && (
         <AlertDialog>
@@ -149,11 +149,11 @@ function SidebarContent({ onClose }) {
   const isPremium = user?.plan === 'premium';
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--color-sidebar-bg)]">
       {/* Logo & Title - Fixed at top */}
       <div className="flex-shrink-0 p-4 pb-2">
         <div className="flex items-center gap-3 mb-4">
-          <div className="relative w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center ring-2 ring-emerald-200 dark:ring-emerald-800 flex-shrink-0 aspect-square">
+          <div className="relative w-12 h-12 rounded-xl bg-[var(--color-accent)] flex items-center justify-center ring-2 ring-[var(--color-border)] flex-shrink-0 aspect-square">
             <img src={hidhayaLogo}
               alt="Hidhaya"
               width={44}
@@ -162,21 +162,21 @@ function SidebarContent({ onClose }) {
             />
           </div>
           <div className="min-w-0">
-            <h1 className="font-bold text-lg text-emerald-800 dark:text-emerald-300 leading-tight">Hidhaya</h1>
-            <p className="text-[11px] text-muted-foreground">Islamic Guidance AI</p>
+            <h1 className="font-bold text-lg text-[var(--color-sidebar-text)] leading-tight">Hidhaya</h1>
+            <p className="text-[11px] text-[var(--color-sidebar-muted)]">Islamic Guidance AI</p>
           </div>
         </div>
 
         <Button
           onClick={handleNewChat}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm"
+          className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-foreground)] gap-2 shadow-sm"
         >
           <Plus className="w-4 h-4" />
           New Chat
         </Button>
       </div>
 
-      <Separator className="flex-shrink-0 mx-4 w-auto" />
+      <Separator className="flex-shrink-0 mx-4 w-auto border-[var(--color-sidebar-border)]" />
 
       {/* Navigation - Fixed, no scroll */}
       <div className="flex-shrink-0 px-2 py-3">
@@ -190,14 +190,14 @@ function SidebarContent({ onClose }) {
                 onClick={() => handleNavClick(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   isActive
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 shadow-sm'
-                    : 'text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400'
+                    ? 'bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)] shadow-sm'
+                    : 'text-[var(--color-sidebar-muted)] hover:bg-[var(--color-accent)] hover:text-[var(--color-sidebar-text)]'
                 }`}
               >
-                <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
+                <Icon className={`w-4.5 h-4.5`} />
                 <span>{item.label}</span>
                 {item.id === 'chat' && usage && !isPremium && (
-                  <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                  <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 bg-[var(--color-accent)] text-[var(--color-sidebar-text)]">
                     {remaining}/{usage.limit}
                   </Badge>
                 )}
@@ -207,20 +207,20 @@ function SidebarContent({ onClose }) {
         </nav>
       </div>
 
-      <Separator className="flex-shrink-0 mx-4 w-auto" />
+      <Separator className="flex-shrink-0 mx-4 w-auto border-[var(--color-sidebar-border)]" />
 
       {/* Chat History Section - Scrollable, takes remaining space */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-[100px] flex flex-col overflow-hidden">
         {chatHistory.length > 0 && (
           <>
             <div className="flex-shrink-0 px-3 py-2">
               <div className="flex items-center gap-1.5">
-                <Clock className="w-3 h-3 text-muted-foreground" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Clock className="w-3 h-3 text-[var(--color-sidebar-muted)]" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-sidebar-muted)]">
                   Recent Chats
                 </span>
                 {chatHistory.length > 10 && (
-                  <span className="text-[10px] text-muted-foreground ml-auto">
+                  <span className="text-[10px] text-[var(--color-sidebar-muted)] ml-auto">
                     {chatHistory.length}
                   </span>
                 )}
@@ -255,37 +255,55 @@ function SidebarContent({ onClose }) {
 
       <Separator className="flex-shrink-0 mx-4 w-auto" />
 
-      {/* Footer - Fixed at bottom */}
+      {/* Footer - Fixed at bottom with beautiful usage bar */}
       <div className="flex-shrink-0 p-4 pt-3">
-        {usage && !isPremium && (
-          <div className="mb-3">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-              <span>Daily Usage</span>
-              <span>{usage.usedToday}/{usage.limit}</span>
+        {/* Premium Badge */}
+        {isPremium ? (
+          <div className="mb-3 flex items-center justify-center">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20">
+              <Crown className="w-4 h-4 text-amber-500" />
+              <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                Premium Member
+              </span>
             </div>
-            <div className="h-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-full overflow-hidden">
+          </div>
+        ) : usage ? (
+          <div className="mb-3">
+            <div className="flex justify-between text-xs text-[var(--color-sidebar-muted)] mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <Zap className={`w-3.5 h-3.5 ${
+                  usage.remaining <= 0 ? 'text-red-500' : usage.remaining <= 2 ? 'text-amber-500' : 'text-[var(--color-primary)]'
+                }`} />
+                <span>Daily Usage</span>
+              </div>
+              <span className={`font-medium ${
+                usage.remaining <= 0 ? 'text-red-500' : usage.remaining <= 2 ? 'text-amber-500' : 'text-[var(--color-primary)]'
+              }`}>
+                {usage.remaining <= 0 ? 'Limit reached' : `${usage.remaining}/${usage.limit} left`}
+              </span>
+            </div>
+            <div className={`h-2 rounded-full overflow-hidden ${
+              usage.remaining <= 0 ? 'bg-red-100 dark:bg-red-900/20' :
+              usage.remaining <= 2 ? 'bg-amber-100 dark:bg-amber-900/20' :
+              'bg-[var(--color-accent)]'
+            }`}>
               <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  usage.remaining <= 2 && usage.remaining > 0
-                    ? 'bg-amber-500'
-                    : usage.remaining === 0
+                className={`h-full rounded-full transition-all duration-500 ${
+                  usage.remaining <= 0
                     ? 'bg-red-500'
-                    : 'bg-emerald-500'
+                    : usage.remaining <= 2
+                    ? 'bg-amber-500'
+                    : 'bg-[var(--color-primary)]'
                 }`}
                 style={{ width: `${Math.min(100, (usage.usedToday / usage.limit) * 100)}%` }}
               />
             </div>
           </div>
-        )}
-        {isPremium && (
-          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
-            Premium
-          </Badge>
-        )}
-        <p className="text-[10px] text-muted-foreground mt-2 text-center">
+        ) : null}
+        <p className="text-[10px] text-[var(--color-sidebar-muted)] mt-2 text-center">
           Bismillah hir Rahman nir Raheem
           {language !== 'en' && (
-            <span className="ml-1 text-emerald-600 dark:text-emerald-400">
+            <span className="ml-1 text-[var(--color-primary)]">
               · {language === 'ur' ? 'اردو' : language === 'hi' ? 'हिन्दी' : language === 'bn' ? 'বাংলা' : language === 'roman_urdu' ? 'Roman Urdu' : language}
             </span>
           )}
@@ -297,7 +315,7 @@ function SidebarContent({ onClose }) {
 
 export function SidebarNav() {
   return (
-    <aside className="hidden md:flex w-[280px] border-r border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-background flex-col h-full overflow-hidden">
+    <aside className="hidden md:flex w-[280px] border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar-bg)] h-[100dvh] overflow-y-auto">
       <SidebarContent />
     </aside>
   );
@@ -308,7 +326,7 @@ export function MobileSidebar() {
 
   return (
     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <SheetContent side="left" className="w-[280px] p-0 bg-white dark:bg-background">
+      <SheetContent side="left" className="w-[280px] p-0 bg-[var(--color-sidebar-bg)]">
         <SheetHeader className="sr-only">
           <SheetTitle>Navigation</SheetTitle>
         </SheetHeader>

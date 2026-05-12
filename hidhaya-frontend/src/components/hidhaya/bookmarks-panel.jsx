@@ -49,10 +49,10 @@ function BookmarkCard({
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
-                  {bookmark.sourceRef}
+                  {bookmark.reference}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {bookmark.text.slice(0, 80)}...
+                  {(bookmark.text || bookmark.translation || '').slice(0, 80)}...
                 </p>
               </div>
               <Badge
@@ -83,7 +83,7 @@ function BookmarkCard({
                   className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(bookmark.id);
+                    onDelete(bookmark._id);
                   }}
                 >
                   <Trash2 className="w-3 h-3" />
@@ -105,10 +105,17 @@ export function BookmarksPanel() {
   const [activeTab, setActiveTab] = useState('quran');
 
   const fetchBookmarks = useCallback(async () => {
-    if (!user?.id) return;
+    // Get guestId from localStorage if user is not logged in
+    const guestId = typeof window !== 'undefined'
+      ? localStorage.getItem('hidhaya_guest_id')
+      : null;
+
+    if (!user?.id && !guestId) return;
+
     setLoading(true);
     try {
-      const res = await fetch(`/api/bookmarks?userId=${user.id}`);
+      const query = user?.id ? `userId=${user.id}` : `guestId=${guestId}`;
+      const res = await fetch(`/api/bookmarks?${query}`);
       const data = await res.json();
       setBookmarks(data.bookmarks || []);
     } catch {
@@ -124,8 +131,13 @@ export function BookmarksPanel() {
 
   const handleDelete = async (id) => {
     try {
-      await fetch(`/api/bookmarks?id=${id}`, { method: 'DELETE' });
-      setBookmarks((prev) => prev.filter((b) => b.id !== id));
+      // Get guestId for guests
+      const guestId = typeof window !== 'undefined'
+        ? localStorage.getItem('hidhaya_guest_id')
+        : null;
+      const query = user?.id ? `userId=${user.id}` : (guestId ? `guestId=${guestId}` : '');
+      await fetch(`/api/bookmarks/${id}${query ? '?' + query : ''}`, { method: 'DELETE' });
+      setBookmarks((prev) => prev.filter((b) => b._id !== id));
       toast.success('Bookmark removed');
     } catch {
       toast.error('Failed to remove bookmark');
@@ -135,7 +147,11 @@ export function BookmarksPanel() {
   const quranBookmarks = bookmarks.filter((b) => b.type === 'quran');
   const hadithBookmarks = bookmarks.filter((b) => b.type === 'hadith');
 
-  if (!user?.id) {
+  // Check if user is truly not logged in (no user.id AND no guestId)
+  const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
+  const isLoggedOut = !user?.id && !guestId;
+
+  if (isLoggedOut) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 text-center">
         <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4">
@@ -152,9 +168,9 @@ export function BookmarksPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-emerald-100 dark:border-emerald-900/50 bg-white dark:bg-background">
+      <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-card)]">
         <div className="flex items-center gap-2">
-          <Bookmark className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <Bookmark className="w-5 h-5 text-[var(--color-primary)]" />
           <h2 className="text-lg font-semibold text-foreground">Bookmarks</h2>
         </div>
       </div>
@@ -162,17 +178,17 @@ export function BookmarksPanel() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
         <div className="px-4 pt-3">
-          <TabsList className="w-full bg-emerald-50 dark:bg-emerald-950/30">
+          <TabsList className="w-full bg-[var(--color-accent)]">
             <TabsTrigger
               value="quran"
-              className="flex-1 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+              className="flex-1 data-[state=active]:bg-[var(--color-primary)] data-[state=active]:text-[var(--color-primary-foreground)]"
             >
               <BookOpen className="w-3.5 h-3.5 mr-1.5" />
               Quran ({quranBookmarks.length})
             </TabsTrigger>
             <TabsTrigger
               value="hadith"
-              className="flex-1 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+              className="flex-1 data-[state=active]:bg-[var(--color-primary)] data-[state=active]:text-[var(--color-primary-foreground)]"
             >
               <Library className="w-3.5 h-3.5 mr-1.5" />
               Hadith ({hadithBookmarks.length})
@@ -198,7 +214,7 @@ export function BookmarksPanel() {
                 <div className="space-y-2.5">
                   <AnimatePresence>
                     {quranBookmarks.map((b) => (
-                      <BookmarkCard key={b.id} bookmark={b} onDelete={handleDelete} />
+                      <BookmarkCard key={b._id} bookmark={b} onDelete={handleDelete} />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -234,7 +250,7 @@ export function BookmarksPanel() {
                 <div className="space-y-2.5">
                   <AnimatePresence>
                     {hadithBookmarks.map((b) => (
-                      <BookmarkCard key={b.id} bookmark={b} onDelete={handleDelete} />
+                      <BookmarkCard key={b._id} bookmark={b} onDelete={handleDelete} />
                     ))}
                   </AnimatePresence>
                 </div>

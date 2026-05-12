@@ -229,6 +229,20 @@ export const useHidhayaStore = create((set, get) => ({
       theme: savedTheme,
     });
 
+    // Restore user from localStorage if token exists
+    const token = localStorage.getItem('hidhaya_token');
+    const savedUserJson = localStorage.getItem('hidhaya_user');
+    let restoredUser = null;
+
+    if (token && savedUserJson) {
+      try {
+        restoredUser = JSON.parse(savedUserJson);
+        set({ user: restoredUser });
+      } catch (e) {
+        console.error('Failed to parse saved user:', e);
+      }
+    }
+
     // Guest ID setup
     let guestId =
       typeof window !== 'undefined'
@@ -246,10 +260,27 @@ export const useHidhayaStore = create((set, get) => ({
       }
     }
 
+    // Use restoredUser from above instead of calling get()
+    const userId = restoredUser?.id;
+
+    // Build usage API query - use userId if logged in, otherwise guestId
+    let usageQuery = '';
+    if (userId) {
+      usageQuery = `userId=${userId}`;
+    } else {
+      usageQuery = `guestId=${guestId}`;
+    }
+
     // Load usage
     try {
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(
-        `${API_BASE}/api/chat/usage?guestId=${guestId}`
+        `${API_BASE}/api/chat/usage?${usageQuery}`,
+        { headers }
       );
 
       const data = await res.json();
