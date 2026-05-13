@@ -8,7 +8,6 @@ const chatSchema = new mongoose.Schema({
   response: { type: String, required: true },
   language: {
     type: String,
-    enum: ['english', 'hindi', 'urdu', 'bengali', 'roman_urdu'],
     default: 'english'
   },
   references: [{

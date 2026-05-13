@@ -3,7 +3,7 @@
  */
 
 const { search } = require('../services/advancedSearchPipeline');
-const { buildPrompt, getFallbackMessage } = require('../services/promptGenerator');
+const { buildPrompt, getFallbackMessage, formatReferencesForResponse, getNormalizedLanguage } = require('../services/promptGenerator');
 const { generateText } = require('../config/gemini');
 const Chat = require('../models/Chat');
 
@@ -14,27 +14,82 @@ const withTimeout = (promise, timeoutMs) => Promise.race([
   new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), timeoutMs))
 ]);
 
-// Format reference for response
-const formatReferenceForResponse = (r) => {
+// Format reference for response - select text based on language
+const formatReferenceForResponse = (r, language) => {
+  const normalizedLang = getNormalizedLanguage(language);
+
   let source = r.source || '';
   if (!source) {
     if (r.type === 'quran') source = `Quran ${r.chapter}:${r.verse}`;
     else if (r.type === 'hadith') source = `${r.book} ${r.idInBook}`;
   }
-  return { type: r.type, text: r.text || '', source, english: r.english || '', urdu: r.urdu || '', hindi: r.hindi || '', bengali: r.bengali || '', grade: r.grade || '' };
+
+  // Select primary text based on language
+  let text = '';
+  switch (normalizedLang) {
+    case 'hindi': text = r.hindi || r.english || ''; break;
+    case 'urdu': text = r.urdu || r.english || ''; break;
+    case 'bengali': text = r.bengali || r.english || ''; break;
+    case 'roman_urdu': text = r.romanUrdu || r.english || ''; break;
+    default: text = r.english || '';
+  }
+
+  return {
+    type: r.type,
+    text: text,
+    source,
+    english: r.english || '',
+    urdu: r.urdu || '',
+    hindi: r.hindi || '',
+    bengali: r.bengali || '',
+    romanUrdu: r.romanUrdu || '',
+    grade: r.grade || ''
+  };
 };
 
 // Generate fallback response when AI fails
 const generateManualFallback = (query, references, language) => {
+  const normalizedLang = getNormalizedLanguage(language);
+
   if (references.length === 0) return getFallbackMessage(language);
-  const intros = { english: 'Al Salamu Alaikum! Here is what the Quran and Hadith teach about this topic:\n\n', hindi: 'अस्सलामु अलैकुम! कुरान और हदीस के अनुसार:\n\n', urdu: 'السلام علیکم! قرآن اور حدیث کے مطابق:\n\n', bengali: 'আসসালামু আলাইকুম! কুরআন ও হাদিস অনুসারে:\n\n' };
-  let response = intros[language] || intros.english;
+
+  // Map language codes to full intros
+  const intros = {
+    english: 'Al Salamu Alaikum! Here is what the Quran and Hadith teach about this topic:\n\n',
+    hindi: 'अस्सलामु अलैकुम! कुरान और हदीस के अनुसार इस विषय पर:\n\n',
+    urdu: 'السلام علیکم! قرآن اور حدیث کے مطابق اس موضوع پر:\n\n',
+    bengali: 'আসসালামু আলাইকুম! কুরআন ও হাদিস অনুসারে এই বিষয়ে:\n\n',
+    roman_urdu: 'Al Salamu Alaikum! Quran aur Hadith ke mutabiq is topic par:\n\n'
+  };
+
+  const closings = {
+    english: 'Please consult a qualified Islamic scholar for detailed guidance.',
+    hindi: 'कृपया विस्तृत मार्गदर्शन के लिए किसी योग्य इस्लामिक विद्वान से परामर्श करें।',
+    urdu: 'براہ کرم تفصیلی رہنمائی کے لئے کسی اہل علم سے مشورہ کریں۔',
+    bengali: 'অনুগ্রহ করে বিস্তারিত guidance-এর জন্য একজন যোগ্য আলেমের সাথে পরামর্শ করুন।',
+    roman_urdu: 'Please ek qualified Islamic scholar se guidance lein.'
+  };
+
+  let response = intros[normalizedLang] || intros.english;
+
   references.slice(0, 3).forEach((ref, i) => {
     let src = ref.source || '';
     if (!src) src = ref.type === 'quran' ? `Quran ${ref.chapter || '?'}:${ref.verse || '?'}` : `${ref.book || 'Unknown'} ${ref.idInBook || ref.id || '?'}`;
-    response += `[${i + 1}] ${ref.type === 'quran' ? 'Quran' : 'Hadith'} - ${src}\n${(ref.english || ref.urdu || ref.text || '').substring(0, 300)}\n\n`;
+
+    // Get translation in selected language
+    let text = '';
+    switch (normalizedLang) {
+      case 'hindi': text = ref.hindi || ref.english || ''; break;
+      case 'urdu': text = ref.urdu || ref.english || ''; break;
+      case 'bengali': text = ref.bengali || ref.english || ''; break;
+      case 'roman_urdu': text = ref.romanUrdu || ref.english || ''; break;
+      default: text = ref.english || '';
+    }
+
+    response += `[${i + 1}] ${ref.type === 'quran' ? 'Quran' : 'Hadith'} - ${src}\n${text.substring(0, 300)}\n\n`;
   });
-  response += 'Please consult a qualified Islamic scholar for detailed guidance.';
+
+  response += closings[normalizedLang] || closings.english;
   return response;
 };
 
@@ -64,8 +119,8 @@ exports.askQuestion = async (req, res) => {
       query: searchQuery,
       response: responseText,
       title: searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery,
-      language,
-      references: references.slice(0, 5).map(formatReferenceForResponse),
+      language: getNormalizedLanguage(language),
+      references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)),
       metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
     };
     if (req.user) chatData.userId = req.user._id;
@@ -123,7 +178,13 @@ exports.askQuestionStream = async (req, res) => {
     try {
       streamText = await withTimeout(generateText(buildPrompt(searchQuery, references, language, searchMetadata)), AI_TIMEOUT);
     } catch (err) {
-      streamText = generateManualFallback(searchQuery, references, language);
+      console.error('AI generation failed, using fallback:', err.message);
+      try {
+        streamText = generateManualFallback(searchQuery, references, language);
+      } catch (fallbackErr) {
+        console.error('Fallback also failed:', fallbackErr.message);
+        streamText = getFallbackMessage(language);
+      }
     }
 
     // Send complete response
@@ -133,12 +194,14 @@ exports.askQuestionStream = async (req, res) => {
     // Save chat (don't fail the response if save fails)
     try {
       const chatTitle = searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery;
+      // Normalize language to full name for database storage
+      const normalizedLanguage = getNormalizedLanguage(language);
       const chatData = {
         query: searchQuery,
         response: streamText,
         title: chatTitle,
-        language,
-        references: references.slice(0, 5).map(formatReferenceForResponse),
+        language: normalizedLanguage,
+        references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)),
         metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
       };
 
@@ -273,7 +336,7 @@ exports.regenerateResponse = async (req, res) => {
     }
 
     chat.response = newResponse;
-    chat.references = references.slice(0, 5).map(formatReferenceForResponse);
+    chat.references = references.slice(0, 5).map(r => formatReferenceForResponse(r, chat.language));
     chat.metadata = { ...chat.metadata, confidence, regeneratedAt: new Date() };
     await chat.save();
 
