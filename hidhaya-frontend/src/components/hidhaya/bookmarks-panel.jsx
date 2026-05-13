@@ -110,7 +110,7 @@ export function BookmarksPanel() {
       ? localStorage.getItem('hidhaya_guest_id')
       : null;
 
-    const currentUserId = user?.id;
+    const currentUserId = user?._id;
 
     if (!currentUserId && !currentGuestId) {
       return;
@@ -135,7 +135,7 @@ export function BookmarksPanel() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?._id]);
 
   // Fetch bookmarks on mount
   useEffect(() => {
@@ -147,12 +147,16 @@ export function BookmarksPanel() {
 
   const handleDelete = async (id) => {
     try {
-      // Get guestId for guests
       const guestId = typeof window !== 'undefined'
         ? localStorage.getItem('hidhaya_guest_id')
         : null;
-      const query = user?.id ? `userId=${user.id}` : (guestId ? `guestId=${guestId}` : '');
-      await fetch(`/api/bookmarks/${id}${query ? '?' + query : ''}`, { method: 'DELETE' });
+      const token = localStorage.getItem('hidhaya_token');
+
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const query = user?._id ? `userId=${user._id}` : (guestId ? `guestId=${guestId}` : '');
+      await fetch(`/api/bookmarks/${id}${query ? '?' + query : ''}`, { method: 'DELETE', headers });
       setBookmarks((prev) => prev.filter((b) => b._id !== id));
       toast.success('🗑️ Removed from Bookmarks', { duration: 2000 });
     } catch {
@@ -165,9 +169,9 @@ export function BookmarksPanel() {
 
   // Check if user is truly not logged in (no user.id AND no guestId)
   const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
-  const isLoggedOut = !user?.id && !guestId;
+  const isLoggedOut = !user?._id && !guestId;
 
-  console.log('Bookmarks panel:', { userId: user?.id, guestId, isLoggedOut, bookmarkCount: bookmarks.length });
+  console.log('Bookmarks panel:', { userId: user?._id, guestId, isLoggedOut, bookmarkCount: bookmarks.length });
 
   if (isLoggedOut) {
     return (

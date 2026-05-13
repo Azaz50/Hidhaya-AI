@@ -369,7 +369,7 @@ export function SearchPanel({ type }) {
 
   const handleBookmark = async (ref, text) => {
     // Get userId if logged in, otherwise guestId
-    const userId = user?.id;
+    const userId = user?._id;
     const guestId = !userId
       ? localStorage.getItem('hidhaya_guest_id')
       : null;

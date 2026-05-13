@@ -138,10 +138,10 @@ function SidebarContent({ onClose }) {
   useEffect(() => {
     // Also check localStorage for guestId if user is not logged in
     const localGuestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
-    if (user?.id || localGuestId) {
+    if (user?._id || localGuestId) {
       loadChatHistory();
     }
-  }, [user?.id, user?.guestId]);
+  }, [user?._id, user?.guestId]);
 
   // Auto-scroll chat history to show latest conversations
   useEffect(() => {

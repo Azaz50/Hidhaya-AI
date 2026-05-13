@@ -111,7 +111,8 @@ export const useHidhayaStore = create((set, get) => ({
 
   loadChatHistory: async () => {
     const state = get();
-    const userId = state.user?.id;
+    // Use user._id for registered users, guestId for guests
+    const userId = state.user?._id;
     const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
 
     if (!userId && !guestId) return;
@@ -129,7 +130,7 @@ export const useHidhayaStore = create((set, get) => ({
   loadChat: async (chatIdToLoad) => {
     try {
       const state = get();
-      const userId = state.user?.id;
+      const userId = state.user?._id;
       const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
       const param = userId ? `userId=${userId}` : (guestId ? `guestId=${guestId}` : '');
 
@@ -170,7 +171,7 @@ export const useHidhayaStore = create((set, get) => ({
   deleteChat: async (chatIdToDelete) => {
     try {
       const state = get();
-      const userId = state.user?.id;
+      const userId = state.user?._id;
       const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
       const param = userId ? `userId=${userId}` : (guestId ? `guestId=${guestId}` : '');
 
@@ -279,7 +280,7 @@ export const useHidhayaStore = create((set, get) => ({
     }
 
     // Use restoredUser from above instead of calling get()
-    const userId = restoredUser?.id;
+    const userId = restoredUser?._id;
 
     // Build usage API query - use userId if logged in, otherwise guestId
     let usageQuery = '';

@@ -713,7 +713,7 @@ export function ChatPanel() {
   }, [messages, isLoading, scrollToBottom]);
 
   const handleBookmark = async (type, ref, text) => {
-    if (!user?.id) {
+    if (!user?._id) {
       toast.error('Please sign in to bookmark');
       return;
     }
@@ -722,7 +722,7 @@ export function ChatPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user?._id || undefined,
           type,
           sourceRef: ref,
           text,
@@ -798,8 +798,8 @@ export function ChatPanel() {
         body: JSON.stringify({
           question: text,
           chatId: chatId || undefined,
-          userId: user?.id || undefined,
-          guestId: !user?.id ? guestId : undefined,
+          userId: user?._id || undefined,
+          guestId: !user?._id ? guestId : undefined,
           language: language,
           history: messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
         }),

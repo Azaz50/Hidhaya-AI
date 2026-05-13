@@ -40,7 +40,7 @@ export function ProfilePanel() {
     setLanguage(lang);
 
     // Also save to backend for registered users
-    if (user?.id && !isGuest) {
+    if (user?._id && !isGuest) {
       try {
         const token = localStorage.getItem('hidhaya_token');
         const res = await fetch('/api/auth/preferences', {
@@ -67,7 +67,7 @@ export function ProfilePanel() {
 
   const handleKidsModeToggle = async (checked) => {
     setKidsMode(checked);
-    if (user?.id && !isGuest) {
+    if (user?._id && !isGuest) {
       try {
         const token = localStorage.getItem('hidhaya_token');
         const res = await fetch('/api/auth/preferences', {
