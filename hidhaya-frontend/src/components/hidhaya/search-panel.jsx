@@ -206,15 +206,36 @@ function HadithResultCard({
 }) {
   useHidhayaStore();
 
+  // Full collection names mapping
+  const COLLECTION_NAMES = {
+    'bukhari': 'Sahih al-Bukhari',
+    'muslim': 'Sahih Muslim',
+    'abudawud': 'Sunan Abu Dawood',
+    'tirmidhi': 'Jami al-Tirmidhi',
+    'nasai': 'Sunan al-Nasa\'i',
+    'ibnmajah': 'Sunan Ibn Majah',
+    'malik': 'Muwatta Imam Malik',
+    'darimi': 'Sunan al-Darimi',
+    'ahmed': 'Musnad Ahmad bin Hanbal',
+    'mishkat_almasabih': 'Mishkat al-Masabih',
+    'aladab_almufrad': 'Al-Adab al-Mufrad',
+    'bulugh_almaram': 'Bulugh al-Maram',
+    'nawawi40': 'Forty Hadith of Imam Nawawi',
+    'qudsi40': 'Forty Hadith Qudsi',
+    'riyad_assalihin': 'Riyad al-Salihin',
+    'shahwaliullah40': 'Forty Hadith of Shah Waliullah',
+    'shamail_muhammadiah': 'Shamail al-Muhammadiah'
+  };
+
   // Handle both old and new API response formats
   const getTranslation = () => {
     // New API returns 'text' field
     return hadith.text || hadith.english || '';
   };
 
-  const source = hadith.source || hadith.collection || '';
+  const collectionName = hadith.collection || COLLECTION_NAMES[hadith.source] || hadith.source || '';
   const narrator = hadith.narrator || '';
-  const reference = hadith.id || hadith.reference || '';
+  const reference = hadith.reference || `${collectionName} — Hadith ${hadith.idInBook || hadith.id || '?'}`;
 
   return (
     <motion.div
@@ -230,12 +251,12 @@ function HadithResultCard({
               <div className="flex items-center gap-2">
                 <Library className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 <span className="font-semibold text-amber-800 dark:text-amber-300">
-                  {source}
+                  {collectionName}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <p className="text-xs text-muted-foreground">
-                  {reference}
+                  {hadith.idInBook ? `Hadith ${hadith.idInBook}` : reference}
                 </p>
                 {narrator && (
                   <span className="text-[10px] text-muted-foreground">

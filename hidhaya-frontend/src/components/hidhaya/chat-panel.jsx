@@ -127,13 +127,35 @@ function QuranReferenceCard({
 // HADITH REFERENCE CARD — Unique Warm Style
 // ============================================================
 
+// Full collection names for proper Hadith display
+const HADITH_COLLECTION_DISPLAY = {
+  'bukhari': 'Sahih al-Bukhari',
+  'muslim': 'Sahih Muslim',
+  'abudawud': 'Sunan Abu Dawood',
+  'tirmidhi': 'Jami al-Tirmidhi',
+  'nasai': 'Sunan al-Nasa\'i',
+  'ibnmajah': 'Sunan Ibn Majah',
+  'malik': 'Muwatta Imam Malik',
+  'darimi': 'Sunan al-Darimi',
+  'ahmed': 'Musnad Ahmad bin Hanbal'
+};
+
 function HadithReferenceCard({
   reference,
   text,
   collection,
+  grade,
   onBookmark,
 }) {
   const [open, setOpen] = useState(false);
+
+  // Get display name for collection
+  const displayCollection = collection
+    ? (HADITH_COLLECTION_DISPLAY[collection] || collection)
+    : '';
+
+  // Extract Hadith number from reference (e.g., "Sahih al-Bukhari — Hadith 49")
+  const hadithNum = reference?.match(/Hadith\s+(\d+)/i)?.[1] || '';
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -144,9 +166,18 @@ function HadithReferenceCard({
               <Library className="w-3.5 h-3.5 text-amber-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-semibold text-[var(--color-foreground)]">{reference}</span>
-              {collection && (
-                <span className="text-[10px] text-amber-500 ml-1.5">• {collection}</span>
+              <span className="text-sm font-semibold text-[var(--color-foreground)]">
+                {displayCollection}
+              </span>
+              {hadithNum && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                  • Hadith {hadithNum}
+                </span>
+              )}
+              {grade && (
+                <span className="text-[10px] text-muted-foreground ml-2">
+                  ({grade})
+                </span>
               )}
             </div>
             {open ? (
@@ -305,6 +336,7 @@ function ChatBubble({ message, onBookmark }) {
                         reference={ref.reference}
                         text={ref.text}
                         collection={ref.collection}
+                        grade={ref.grade}
                         onBookmark={onBookmark ? () => onBookmark('hadith', ref.reference, ref.text) : undefined}
                       />
                     ))}

@@ -7,6 +7,28 @@ const fs = require('fs');
 const path = require('path');
 const Fuse = require('fuse.js');
 
+// Full authentic Hadith collection names mapping
+const HADITH_COLLECTION_NAMES = {
+  'bukhari': 'Sahih al-Bukhari',
+  'muslim': 'Sahih Muslim',
+  'abudawud': 'Sunan Abu Dawood',
+  'tirmidhi': 'Jami al-Tirmidhi',
+  'nasai': 'Sunan al-Nasa\'i',
+  'ibnmajah': 'Sunan Ibn Majah',
+  'malik': 'Muwatta Imam Malik',
+  'darimi': 'Sunan al-Darimi',
+  'ahmed': 'Musnad Ahmad bin Hanbal',
+  'mishkat_almasabih': 'Mishkat al-Masabih',
+  'aladab_almufrad': 'Al-Adab al-Mufrad',
+  'bulugh_almaram': 'Bulugh al-Maram',
+  'nawawi40': 'Forty Hadith of Imam Nawawi',
+  'qudsi40': 'Forty Hadith Qudsi',
+  'riyad_assalihin': 'Riyad al-Salihin',
+  'shahwaliullah40': 'Forty Hadith of Shah Waliullah',
+  'shamail_muhammadiah': 'Shamail al-Muhammadiah',
+  'shamail_muhammadiya': 'Shamail al-Muhammadiah'
+};
+
 // Load all Hadith data (cached in memory)
 let hadithData = null;
 let fuseIndex = null;
@@ -15,7 +37,7 @@ const HADITH_SOURCES = [
   'bukhari', 'muslim', 'ahmed', 'nasai', 'abudawud',
   'ibnmajah', 'aladab_almufrad', 'bulugh_almaram', 'malik',
   'mishkat_almasabih', 'nawawi40', 'qudsi40', 'riyad_assalihin',
-  'shahwaliullah40', 'shamail_muhammadiya'
+  'shahwaliullah40', 'shamail_muhammadiah'
 ];
 
 const loadHadithData = () => {
@@ -43,7 +65,9 @@ const loadHadithData = () => {
             hadithData.push({
               id: `${source}_${h.id}`,
               source,
+              idInBook: h.idInBook || h.id || null,
               arabic: h.arabic || '',
+              english: englishText,
               english: englishText,
               englishNarrator: englishNarrator,
               urdu: urduText,
@@ -108,9 +132,15 @@ exports.searchHadith = async (req, res) => {
 
     // Format response
     const formatHadith = (h) => {
+      const collectionName = HADITH_COLLECTION_NAMES[h.source] || h.source;
+      const hadithNum = h.idInBook || h.id || '?';
+
       const response = {
         id: h.id,
         source: h.source,
+        collection: collectionName,
+        reference: `${collectionName} — Hadith ${hadithNum}`,
+        idInBook: h.idInBook || null,
         narrator: h.narrator || h.englishNarrator || '',
         arabic: h.arabic
       };

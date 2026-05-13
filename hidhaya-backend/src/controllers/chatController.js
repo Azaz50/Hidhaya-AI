@@ -3,7 +3,7 @@
  */
 
 const { search } = require('../services/advancedSearchPipeline');
-const { buildPrompt, getFallbackMessage, formatReferencesForResponse, getNormalizedLanguage } = require('../services/promptGenerator');
+const { buildPrompt, getFallbackMessage, formatReferencesForResponse, getNormalizedLanguage, HADITH_COLLECTION_NAMES } = require('../services/promptGenerator');
 const { generateText } = require('../config/gemini');
 const Chat = require('../models/Chat');
 
@@ -20,8 +20,14 @@ const formatReferenceForResponse = (r, language) => {
 
   let source = r.source || '';
   if (!source) {
-    if (r.type === 'quran') source = `Quran ${r.chapter}:${r.verse}`;
-    else if (r.type === 'hadith') source = `${r.book} ${r.idInBook}`;
+    if (r.type === 'quran') {
+      source = `Quran ${r.chapter}:${r.verse}`;
+    } else if (r.type === 'hadith') {
+      // Use proper collection name and idInBook for Hadith number
+      const bookName = HADITH_COLLECTION_NAMES[r.book] || r.book;
+      const hadithNum = r.idInBook || r.id || '?';
+      source = `${bookName} — Hadith ${hadithNum}`;
+    }
   }
 
   // Select primary text based on language
@@ -38,6 +44,7 @@ const formatReferenceForResponse = (r, language) => {
     type: r.type,
     text: text,
     source,
+    reference: source,
     english: r.english || '',
     urdu: r.urdu || '',
     hindi: r.hindi || '',
@@ -74,7 +81,16 @@ const generateManualFallback = (query, references, language) => {
 
   references.slice(0, 3).forEach((ref, i) => {
     let src = ref.source || '';
-    if (!src) src = ref.type === 'quran' ? `Quran ${ref.chapter || '?'}:${ref.verse || '?'}` : `${ref.book || 'Unknown'} ${ref.idInBook || ref.id || '?'}`;
+    if (!src) {
+      if (ref.type === 'quran') {
+        src = `Quran ${ref.chapter || '?'}:${ref.verse || '?'}`;
+      } else {
+        // Use proper Hadith collection name and idInBook
+        const bookName = HADITH_COLLECTION_NAMES[ref.book] || ref.book || 'Unknown';
+        const hadithNum = ref.idInBook || ref.id || '?';
+        src = `${bookName} — Hadith ${hadithNum}`;
+      }
+    }
 
     // Get translation in selected language
     let text = '';

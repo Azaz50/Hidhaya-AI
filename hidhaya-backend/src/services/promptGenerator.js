@@ -49,14 +49,14 @@ const formatReferences = (references, language) => {
   return topRefs.map((ref, i) => {
     const type = ref.type === 'quran' ? 'Quran' : 'Hadith';
 
-    // Build source from available fields
-    let source = ref.source || '';
-    if (!source) {
-      if (ref.type === 'quran') {
-        source = `Quran ${ref.chapter}:${ref.verse}`;
-      } else if (ref.type === 'hadith') {
-        source = `${ref.book} ${ref.idInBook}`;
-      }
+    let source = '';
+    if (ref.type === 'quran') {
+      source = `Quran ${ref.chapter}:${ref.verse}`;
+    } else if (ref.type === 'hadith') {
+      // Use proper collection name and idInBook for Hadith
+      const bookName = HADITH_COLLECTION_NAMES[ref.book] || ref.book;
+      const hadithNum = ref.idInBook || ref.id || '?';
+      source = `${bookName} — Hadith ${hadithNum}`;
     }
 
     const grade = ref.grade ? ` (${ref.grade})` : '';
@@ -136,7 +136,28 @@ const getFallbackMessage = (language = 'english') => {
   return FALLBACK_MESSAGES[normalizedLang] || FALLBACK_MESSAGES.english;
 };
 
-// Format reference for response output - include all translations
+// Full authentic Hadith collection names mapping
+const HADITH_COLLECTION_NAMES = {
+  'bukhari': 'Sahih al-Bukhari',
+  'muslim': 'Sahih Muslim',
+  'abudawud': 'Sunan Abu Dawood',
+  'tirmidhi': 'Jami al-Tirmidhi',
+  'nasai': 'Sunan al-Nasa\'i',
+  'ibnmajah': 'Sunan Ibn Majah',
+  'malik': 'Muwatta Imam Malik',
+  'darimi': 'Sunan al-Darimi',
+  'ahmed': 'Musnad Ahmad bin Hanbal',
+  'mishkat_almasabih': 'Mishkat al-Masabih',
+  'aladab_almufrad': 'Al-Adab al-Mufrad',
+  'bulugh_almaram': 'Bulugh al-Maram',
+  'nawawi40': 'Forty Hadith of Imam Nawawi',
+  'qudsi40': 'Forty Hadith Qudsi',
+  'riyad_assalihin': 'Riyad al-Salihin',
+  'shahwaliullah40': 'Forty Hadith of Shah Waliullah',
+  'shamail_muhammadiah': 'Shamail al-Muhammadiah'
+};
+
+// Format reference for response output - include all translations and proper formatting
 const formatReferencesForResponse = (references, language) => {
   if (!references?.length) return [];
 
@@ -153,16 +174,30 @@ const formatReferencesForResponse = (references, language) => {
       default: primaryText = ref.english || '';
     }
 
+    // Build proper reference string
+    let reference = '';
+    if (ref.type === 'quran') {
+      reference = `Quran ${ref.chapter}:${ref.verse}`;
+    } else if (ref.type === 'hadith') {
+      // Use idInBook for the actual Hadith number, NOT internal id
+      const bookName = HADITH_COLLECTION_NAMES[ref.book] || ref.book;
+      const hadithNum = ref.idInBook || ref.id || '?';
+      reference = `${bookName} — Hadith ${hadithNum}`;
+    }
+
     return {
       type: ref.type,
       text: primaryText,
+      reference: reference,
       source: ref.source || '',
       english: ref.english || '',
       urdu: ref.urdu || '',
       hindi: ref.hindi || '',
       bengali: ref.bengali || '',
       romanUrdu: ref.romanUrdu || '',
-      grade: ref.grade || ''
+      grade: ref.grade || '',
+      collection: ref.book ? (HADITH_COLLECTION_NAMES[ref.book] || ref.book) : '',
+      idInBook: ref.idInBook || null
     };
   });
 };
@@ -172,5 +207,6 @@ module.exports = {
   getFallbackMessage,
   formatReferences,
   formatReferencesForResponse,
-  getNormalizedLanguage
+  getNormalizedLanguage,
+  HADITH_COLLECTION_NAMES
 };
