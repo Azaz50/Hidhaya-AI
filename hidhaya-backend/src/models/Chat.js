@@ -4,6 +4,7 @@ const chatSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
   guestId: { type: String, required: false },
   query: { type: String, required: true },
+  title: { type: String, default: '' },
   response: { type: String, required: true },
   language: {
     type: String,

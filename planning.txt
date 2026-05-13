@@ -1,541 +1,1158 @@
-Hidhaya AI — Final Product Requirements Document (PRD)
-Product Name
+# Hidhaya AI — Performance, Reliability & AI Training PRD
 
-Hidhaya AI
-Your Personal Islamic Companion
+# Core Development Principles
 
-1. Vision
+Before implementing any feature or writing code, always prioritize:
 
-Hidhaya AI is an advanced AI-powered Islamic guidance platform designed to provide authentic, emotionally supportive, and easy-to-understand Islamic answers using Quran and Hadith references.
+* efficiency
+* speed
+* scalability
+* reliability
+* maintainability
+* security
+* clean architecture
 
-The platform allows users to ask questions naturally in:
+Avoid:
 
-English
-Hindi
-Urdu
-Bengali
-Roman Urdu
+* unnecessary code
+* duplicated logic
+* memory-heavy operations
+* slow retrieval methods
+* unoptimized searches
 
-Example Questions:
+The entire system must be production-ready and scalable for millions of Quran and Hadith records.
 
-“Sabr kya hai?”
-“Iman kise kehte hain?”
-“How to control anger in Islam?”
-“Depression me kya dua padhe?”
-“Shirk kya hai?”
-“Bachon ki tarbiyah kaise karein?”
+---
 
-The core mission is:
+# AI Training & Retrieval Focus
 
-“Make authentic Islamic knowledge simple, trustworthy, emotional, and accessible for everyone.”
+The primary focus of Hidhaya AI is:
 
-2. Main Goals
-
-The platform must:
-
-✅ Use Quran and Hadith references from the provided dataset only
-✅ Give emotionally supportive and simplified answers
-✅ Support multilingual understanding
-✅ Avoid hallucinated Islamic rulings
-✅ Build trust through authentic references
-✅ Handle semantic Islamic understanding intelligently
-✅ Scale for millions of Quran and Hadith records in future
-
-3. Core AI Philosophy
-
-Hidhaya AI is NOT a Mufti or scholar.
-
-The AI should:
-
-Explain Islam simply
-Use only provided references
-Never invent Hadith or Quran references
-Never generate fake authenticity grades
-Never give unsupported fatwas
-Encourage users respectfully
-Say “Please consult a qualified Islamic scholar” when confidence is low
-4. Current Scope
-
-Current Phase:
-
-✅ Web Application Only
-
-Future:
-
-React Native Mobile App
-iOS App
-Voice AI
-Scholar Dashboard
-AI Personalization
-5. Final Tech Stack
-Layer	Technology
-Frontend	Next.js + TypeScript
-Backend	Node.js + Express.js
-Database	MongoDB
-Cache	Redis
-Search Engine	Fuse.js + Semantic Search Engine
-AI Provider	Gemini / OpenAI
-Queue System	BullMQ
-Hosting Frontend	Vercel
-Hosting Backend	Railway / AWS
-Storage	Cloudflare R2
-6. Final Architecture
-Architecture Type
-Modular Monolith Architecture
-
-Frontend and backend must remain separate for clean scalability.
-
-7. Final Folder Structure
-hidhaya-ai/
-│
-├── frontend/                      # Next.js Frontend
-│
-│   ├── public/
-│   ├── src/
-│   │
-│   │   ├── app/
-│   │   ├── components/
-│   │   ├── features/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   ├── store/
-│   │   ├── styles/
-│   │   ├── types/
-│   │   ├── utils/
-│   │   └── constants/
-│   │
-│   ├── package.json
-│   └── next.config.ts
-│
-│
-├── backend/                       # Express Backend
-│
-│   ├── src/
-│   │
-│   │   ├── modules/
-│   │   │
-│   │   ├── auth/
-│   │   ├── users/
-│   │   ├── ai/
-│   │   ├── quran/
-│   │   ├── hadith/
-│   │   ├── search/
-│   │   ├── chat/
-│   │   ├── bookmarks/
-│   │   ├── premium/
-│   │   ├── subscriptions/
-│   │   ├── payments/
-│   │   ├── analytics/
-│   │   ├── admin/
-│   │   └── notifications/
-│   │
-│   ├── shared/
-│   │
-│   │   ├── middleware/
-│   │   ├── helpers/
-│   │   ├── constants/
-│   │   ├── logger/
-│   │   ├── errors/
-│   │   ├── cache/
-│   │   └── security/
-│   │
-│   ├── ai/
-│   │
-│   │   ├── prompts/
-│   │   ├── providers/
-│   │   ├── moderation/
-│   │   ├── semantic-engine/
-│   │   ├── embeddings/
-│   │   └── rag/
-│   │
-│   ├── data/
-│   │
-│   │   ├── quran/
-│   │   │   └── quran.json
-│   │   │
-│   │   └── hadith/
-│   │       ├── bukhari.json
-│   │       ├── muslim.json
-│   │       ├── tirmidhi.json
-│   │       ├── abudawud.json
-│   │       ├── nasai.json
-│   │       ├── ibnmajah.json
-│   │       ├── ahmed.json
-│   │       └── other hadith collections
-│   │
-│   ├── database/
-│   │   ├── models/
-│   │   ├── migrations/
-│   │   └── seeders/
-│   │
-│   ├── jobs/
-│   ├── queues/
-│   ├── websocket/
-│   │
-│   ├── app.ts
-│   └── server.ts
-│
-├── docs/
-│   ├── PRD/
-│   ├── API/
-│   └── architecture/
-│
-├── package.json
-├── README.md
-└── .env
-8. Core AI System Architecture
-IMPORTANT
-
-The AI must NEVER directly answer from general knowledge first.
-
-Correct AI Flow
-Step 1 — User Question
-
-Example:
-
-“Sabr, Iman aur Taqwa kya hai?”
-
-Step 2 — Query Normalization
-
-The system removes noise words:
-
-Examples:
-
-Input	Normalized
-“Iman kise kehte hai Islam me?”	iman
-“What is shirk?”	shirk
-“Bachon ki tarbiyah kaise kare?”	tarbiyah
-Step 3 — Cross-Language Semantic Understanding
-
-The system understands meaning across languages.
-
-Examples:
-
-User Input	Topic
-dhairya	patience
-sabr	patience
-patience	patience
-गुस्सा	anger
-maafi	forgiveness
-tawakkul	trust_allah
-shirk	shirk
-Step 4 — Strong Search Pipeline
-4-Layer Search System
-Layer 1 — Exact Matching
-
-Find exact phrase matches.
-
-Layer 2 — Relaxed Word Matching
-
-Partial word matching.
-
-Layer 3 — Semantic Topic Expansion
-
-Example:
-
-shirk →
-polytheism
-idolatry
-associating partners with Allah
-false worship
-Layer 4 — Fuzzy Matching
-
-Misspellings supported:
-
-sherk → shirk
-imaan → iman
-gussa → anger
-9. Strong Semantic Islamic Engine
-VERY IMPORTANT
-
-This is the heart of Hidhaya AI.
-
-The system must support:
-
-✅ Hundreds of thousands of Islamic words
-✅ Multi-language semantic matching
-✅ Quran/Hadith topic understanding
-✅ Emotional Islamic understanding
-✅ Synonym detection
-✅ Concept relationships
-
-Supported Languages
-English
-Hindi
-Urdu
-Bengali
-Roman Urdu
-Arabic
-Semantic Mapping Requirements
-
-The engine must map:
-
-synonyms
-emotional meanings
-related Islamic concepts
-transliterations
-Roman Urdu variations
-Hindi/Urdu mixed words
-Example
-sabr
-dhairya
-patience
-perseverance
-endurance
-صبر
-धैर्य
-
-All should map to:
-
-patience
-10. Islamic Concept Mapping
-
-The AI engine must support strong semantic mapping for all Islamic concepts.
-
-Examples:
-
-shirk
-tawheed
-iman
-taqwa
-sabr
-shukr
-tawakkul
-sunnah
-akhlaq
-haya
-sadaqah
-zakat
-jealousy
-backbiting
-parenting
-tarbiyah
-brotherhood
-forgiveness
-anger
-dua
-salah
-rizq
-halal
-haram
-akhirah
-jannah
-jahannam
-
-And thousands of related words.
-
-11. Quran & Hadith Data Rules
-STRICT RULES
-
-The AI MUST:
-
-✅ Use references only from provided JSON dataset
-✅ Never invent Quran references
-✅ Never invent Hadith references
-✅ Never invent Hadith grades
-✅ Never fake authenticity
-
-If Relevant Reference Not Found
-
-DO NOT hallucinate.
-
-Instead show:
-
-Currently, Hidhaya AI could not find a strong direct reference for this topic from the available dataset. We are continuously expanding our Quran and Hadith collections to improve authentic Islamic guidance. Please consult a qualified Islamic scholar for deeper understanding.
-12. AI Response Style
-
-The answer must be:
-
-✅ Emotional
-✅ Respectful
-✅ Beautifully structured
-✅ Beginner friendly
-✅ Practical
-✅ Authentic
-
-13. Final Response Structure
-{
-  "title": "",
-  "summary": "",
-  "quran_guidance": [],
-  "hadith_guidance": [],
-  "simple_explanation": "",
-  "practical_steps": [],
-  "closing_message": "",
-  "references": []
-}
-14. Language System
-IMPORTANT
-
-If user selects Hindi:
-
-→ Entire answer must be in Hindi
-
-If user selects Urdu:
-
-→ Entire answer must be in Urdu
-
-If user selects Bengali:
-
-→ Entire answer must be in Bengali
-
-The AI must NEVER respond in another language after user selects language.
-
-15. Chat Features
-Required Features
-
-✅ AI Chat
-✅ Chat history
-✅ Scrollable chat history
-✅ Question cancel button while AI generating
-✅ Save chat history
-✅ Bookmark responses
-✅ Regenerate response
-✅ Copy response
-✅ Beautiful structured UI
-
-16. AI Reliability Improvements
-
-Current Issue:
-
-AI sometimes thinks for several minutes and fails.
-
-Required Fixes
-
-✅ Faster AI response generation
-✅ Better retrieval pipeline
-✅ Better search indexing
-✅ Optimized semantic engine
-✅ Better AI provider/model
-✅ Context chunk optimization
-✅ Timeout fallback handling
-
-If AI Fails
-
-Show graceful fallback:
-
-Hidhaya AI is trying to find authentic Islamic guidance from the available Quran and Hadith dataset. Please try again in a moment.
-
-NOT generic error messages.
-
-17. Search Quality Improvements
-Problems To Fix
-
-Example:
-
-Searching:
-
-abu bakr
-
-Should NOT return:
-
-abu hurairah
-Required Search Improvements
-
-✅ Exact phrase priority
-✅ Better ranking
-✅ Better token matching
-✅ Semantic confidence scoring
-✅ Multi-language indexing
-✅ Fuzzy threshold optimization
-
-18. Search Confidence System
-Confidence	Behavior
-HIGH	Full structured answer with references
-MEDIUM	Partial semantic answer
-LOW	General Islamic explanation without fake references
-19. Premium System
-Guest Limits
-
-Guest users:
-
-✅ Maximum 10 questions/day
-
-After limit:
-
-Show:
-
-Login popup
-Registration page
-Premium popup
-Registered Free Users
-
-20 questions/day
-
-Premium Plan
-Hidhaya Premium
-India
-
-₹199/month
-
-International
-
-Auto currency conversion using Stripe.
-
-Premium Features
-
-✅ Unlimited AI chats
-✅ Faster AI responses
-✅ Advanced explanations
-✅ Saved history
-✅ Premium themes
-✅ Future voice mode
-
-20. Payment Architecture
-Region	Provider
-India	Razorpay
-International	Stripe
-21. Redis Usage
-
-Redis must handle:
-
-daily question limits
-caching
-semantic search caching
-repeated query optimization
-22. Security Requirements
-
-✅ JWT Authentication
-✅ Rate limiting
-✅ Prompt sanitization
-✅ Input validation
-✅ API protection
-✅ Secure payment webhooks
-
-23. Performance Requirements
-
-✅ Fast responses
-✅ Cached semantic search
-✅ Indexed Quran/Hadith retrieval
-✅ Optimized AI prompts
-✅ Streaming responses
-✅ Lazy loading
-
-24. Future Scalability
-
-The architecture must support future:
-
-✅ Mobile apps
-✅ Millions of Hadith records
-✅ Full Quran semantic engine
-✅ Voice AI
-✅ Vector database
-✅ AI personalization
-✅ Scholar dashboards
-✅ Microservices migration
-
-25. Final Core Principle
-MOST IMPORTANT RULE
-
-Hidhaya AI’s biggest strength is:
-
-✅ Authentic Quran references
-✅ Authentic Hadith references
-✅ Simplified Islamic guidance
-✅ Emotional understanding
-✅ Multi-language support
-✅ Trust-building responses
+1. Retrieve authentic references from provided Quran and Hadith datasets
+2. Understand Islamic concepts semantically
+3. Simplify explanations emotionally and intelligently
+4. Generate structured beginner-friendly Islamic guidance
+5. Maintain strict authenticity
 
 The AI must always prioritize:
 
-“Authenticity before intelligence.”
+Dataset Retrieval First
+→ AI Simplification Second
+
+---
+
+# Strict Source-Based Architecture
+
+AI responses must ALWAYS be generated from:
+
+* local Quran JSON dataset
+* local Hadith JSON datasets
+
+The AI must NEVER:
+
+* invent references
+* generate unsupported Hadith
+* fabricate Quran verses
+* use external Islamic sources
+
+---
+
+# Hadith Number Rule (IMPORTANT)
+
+For Hadith references:
+
+The official Hadith number is:
+
+idInBook
+
+NOT:
+
+* internal id
+* database id
+* array index
+
+Example:
+
+Correct:
+Sahih al-Bukhari Hadith 15
+
+Uses:
+idInBook: 15
+
+This rule must be applied consistently across:
+
+* AI responses
+* search APIs
+* bookmarks
+* citations
+* frontend rendering
+
+---
+
+# AI Answer Generation Strategy
+
+Recommended pipeline:
+
+User Question
+↓
+Query Normalization
+↓
+Semantic Understanding
+↓
+Quran & Hadith Retrieval
+↓
+Confidence Ranking
+↓
+AI Simplification
+↓
+Structured Islamic Response
+
+---
+
+# AI Response Requirements
+
+The AI must:
+
+* simplify difficult Islamic concepts
+* explain emotionally and politely
+* use beginner-friendly language
+* maintain trustworthiness
+* generate beautiful structured responses
+
+The AI should behave like:
+
+“An authentic Islamic guidance assistant”
+
+NOT:
+
+“A Mufti generating fatwas”
+
+---
+
+# Performance Requirements
+
+Because datasets contain millions of lines:
+
+DO NOT use:
+
+* repeated fs.readFile()
+* unindexed scans
+* full-memory loading
+* inefficient loops
+
+Instead implement:
+
+* MongoDB indexing
+* Atlas Search
+* semantic indexing
+* vector embeddings
+* Redis caching
+* lazy loading
+* optimized retrieval pipelines
+
+---
+
+# Security & Reliability
+
+The backend must be:
+
+* secure
+* rate-limited
+* validated
+* sanitized
+* optimized
+
+Implement:
+
+* JWT authentication
+* input validation
+* API rate limiting
+* prompt sanitization
+* caching protection
+* error handling
+* fallback responses
+
+---
+
+# Final Objective
+
+Hidhaya AI must become:
+
+* fast
+* scalable
+* highly accurate
+* semantic-search powered
+* multilingual
+* emotionally intelligent
+* reference-safe
+* secure
+* trustworthy
+
+Core Philosophy:
+
+“Authentic Islamic references with intelligent simplified guidance.”
+
+
+# Hidhaya AI — Advanced AI Search & Retrieval System PRD
+
+## Objective
+
+Build a highly scalable, ultra-fast, multilingual Islamic AI retrieval system for Hidhaya AI.
+
+The system must:
+
+* Search through millions of Quran and Hadith records efficiently
+* Retrieve only authentic references from local datasets
+* Generate simplified AI responses using retrieved references
+* Support Hindi, Urdu, Bengali, and English
+* Scale for future global usage
+* Maintain extremely high search accuracy and trust
+
+---
+
+# Core Retrieval Architecture
+
+## Recommended Final Architecture
+
+User Question
+↓
+Query Normalization Engine
+↓
+Cross-Language Semantic Understanding
+↓
+Advanced Retrieval Pipeline
+↓
+Indexed Quran & Hadith Database
+↓
+Relevant References Extraction
+↓
+Gemini / Best AI Model Simplifies Answer
+↓
+Structured Final Response
+
+---
+
+# IMPORTANT DATA RULE
+
+## References MUST ONLY Come From Local Dataset
+
+AI must NEVER:
+
+* invent Quran references
+* invent Hadith references
+* use external Islamic websites
+* hallucinate Islamic evidence
+
+AI must ONLY use:
+
+* local Quran JSON dataset
+* local Hadith JSON datasets
+
+Datasets include:
+
+* bukhari.json
+* muslim.json
+* abudawud.json
+* tirmidhi.json
+* nasai.json
+* ibnmajah.json
+* ahmed.json
+* quran.json
+
+Location example:
+
+src/data/hadith/
+src/data/quran/
+
+---
+
+# IMPORTANT PERFORMANCE REQUIREMENT
+
+## DO NOT Use fs.readFile() For Search
+
+Because the datasets contain millions of lines and translations.
+
+Instead implement:
+
+* indexed retrieval system
+* MongoDB indexing
+* preprocessed search collections
+* memory-efficient loading
+* background indexing jobs
+* caching layer
+* semantic retrieval engine
+
+---
+
+# BEST SEARCH APPROACH (FINAL)
+
+## Recommended Stack
+
+### Retrieval Layer
+
+Use:
+
+* MongoDB Atlas Search
+* Full-text indexes
+* Compound indexes
+* Vector embeddings
+* Semantic search pipeline
+
+### Semantic Search Layer
+
+Use:
+
+* Fuse.js (secondary fuzzy layer)
+* multilingual synonym engine
+* topic mapping engine
+* embedding-based semantic matching
+
+### AI Layer
+
+Use:
+
+* Gemini 2.5 Flash / Pro
+  OR
+* OpenAI GPT-4.1
+
+AI responsibility:
+
+ONLY simplify and explain retrieved references.
+
+AI must not generate references itself.
+
+---
+
+# MULTI-LANGUAGE SUPPORT
+
+Supported Languages:
+
+* English
+* Hindi
+* Urdu
+* Bengali
+
+Selected language MUST control:
+
+* AI reply language
+* explanation language
+* structured response language
+
+Example:
+
+If user selects Urdu:
+→ entire answer must be Urdu
+
+If user selects Hindi:
+→ entire answer must be Hindi
+
+---
+
+# ADVANCED ISLAMIC SEMANTIC ENGINE
+
+## Goal
+
+Build an extremely powerful Islamic semantic understanding engine.
+
+The engine should understand:
+
+* meanings
+* concepts
+* emotional intent
+* related Islamic terminology
+* multilingual wording variations
+
+---
+
+# CROSS-LANGUAGE SEMANTIC MAPPING
+
+Examples:
+
+| User Input      | Internal Meaning |
+| --------------- | ---------------- |
+| dhairya         | sabr             |
+| gussa           | anger            |
+| maafi           | forgiveness      |
+| umeed           | hope             |
+| shirk           | polytheism       |
+| tawakkul        | trust in Allah   |
+| hasan hussain   | ahl_albayt       |
+| bachon ki talim | tarbiyah         |
+
+---
+
+# ADVANCED ISLAMIC CONCEPT MAPPING
+
+Implement strong topic mapping for:
+
+* shirk
+* tawheed
+* iman
+* taqwa
+* sabr
+* shukr
+* tawakkul
+* sunnah
+* akhlaq
+* tarbiyah
+* ahl_albayt
+* modesty
+* backbiting
+* jealousy
+* sadaqah
+* brotherhood
+* forgiveness
+* mercy
+* dua
+* prayer
+* rizq
+* halal
+* haram
+* patience
+* gratitude
+* dhikr
+* reflection
+* repentance
+* parenting
+* kindness
+* honesty
+* anger control
+
+Support all mappings in:
+
+* English
+* Hindi
+* Urdu
+* Bengali
+* Roman Urdu
+* Arabic
+
+---
+
+# QUERY NORMALIZATION ENGINE
+
+## Remove Noise Words
+
+Examples:
+
+### English
+
+* what is
+* who is
+* tell me about
+* explain
+* how to
+
+### Roman Urdu
+
+* kya hai
+* kaise
+* kise kahte hai
+* islam mein
+
+### Hindi
+
+* क्या है
+* कैसे
+* इस्लाम में
+* बताइए
+
+### Bengali
+
+* কি
+* কিভাবে
+* ইসলামে
+
+### Arabic
+
+* ما هو
+* كيف
+
+---
+
+# 4-LAYER SEARCH PIPELINE
+
+## Layer 1 — Exact Match
+
+Highest priority.
+
+Examples:
+
+* Abu Bakr
+* sabr
+* shirk
+
+Must return exact matching references first.
+
+---
+
+## Layer 2 — Relaxed Matching
+
+Partial semantic word matching.
+
+Example:
+
+"sabr rakhna"
+
+should still retrieve patience-related references.
+
+---
+
+## Layer 3 — Semantic Expansion
+
+Expand related meanings internally.
+
+Example:
+
+"dheeraj"
+
+expands to:
+
+* sabr
+* patience
+* endurance
+
+---
+
+## Layer 4 — Fuzzy Matching
+
+Use Fuse.js for typo tolerance.
+
+Example:
+
+"sherk"
+
+should still match:
+
+"shirk"
+
+---
+
+# SEARCH ACCURACY RULES
+
+## Exact Search Priority
+
+If user searches:
+
+"Abu Bakr"
+
+DO NOT prioritize:
+
+* Abu Hurairah
+* Abu Kaf
+
+Exact phrase matches must rank first.
+
+---
+
+# SEARCH CONFIDENCE SYSTEM
+
+## HIGH CONFIDENCE
+
+Score: 0.8–1.0
+
+Return:
+
+* Quran references
+* Hadith references
+* structured explanation
+* practical guidance
+
+---
+
+## MEDIUM CONFIDENCE
+
+Score: 0.5–0.7
+
+Return:
+
+* semantic references
+* simplified explanation
+* partial evidence
+
+---
+
+## LOW CONFIDENCE
+
+Score: 0.0–0.4
+
+DO NOT generate fake references.
+
+Instead return:
+
+* general Islamic understanding
+* emotional guidance
+* transparent fallback message
+
+Example:
+
+“No exact reference was found in the current dataset. Please consult a qualified Islamic scholar.”
+
+---
+
+# AI RESPONSE RULES
+
+## AI Responsibilities
+
+AI should:
+
+* simplify references
+* explain emotionally
+* make answers beginner-friendly
+* generate practical guidance
+* structure replies beautifully
+
+AI must NEVER:
+
+* invent Hadith grades
+* invent references
+* fabricate Quran verses
+* fabricate scholar opinions
+
+---
+
+# HADITH GRADE RULE
+
+If Hadith grade is missing in dataset:
+
+DO NOT automatically add:
+
+* Sahih
+* Hasan
+* Daif
+
+Only show grade if available in JSON.
+
+---
+
+# RESPONSE STRUCTURE
+
+Every answer should include:
+
+* Title
+* Short Summary
+* Quran Guidance
+* Hadith Guidance
+* Simple Explanation
+* Practical Steps
+* Closing Message
+* Quran References
+* Hadith References
+
+---
+
+# PERFORMANCE OPTIMIZATION
+
+Implement:
+
+* MongoDB indexes
+* Atlas Search
+* Redis caching
+* vector embeddings
+* semantic indexing
+* lazy loading
+* retrieval caching
+* precomputed topic maps
+
+---
+
+# FUTURE SCALE REQUIREMENTS
+
+The system must support:
+
+* millions of Quran/Hadith records
+* multilingual translations
+* large semantic mappings
+* advanced AI retrieval
+* future vector database integration
+* high concurrent users
+
+---
+
+# FINAL GOAL
+
+Hidhaya AI should become:
+
+* highly accurate
+* semantic-search powered
+* multilingual
+* emotionally intelligent
+* authentic
+* fast
+* scalable
+* trustworthy
+* reference-safe
+
+Core Philosophy:
+
+“Authenticity first, intelligent guidance second.”
+
+
+
+# Hidhaya AI — Massive Semantic Islamic Search Engine PRD
+
+# Objective
+
+Build an extremely advanced, scalable, multilingual Islamic semantic search and retrieval engine for Hidhaya AI.
+
+The system must intelligently understand:
+
+* Islamic concepts
+* meanings
+* emotional intent
+* transliterations
+* spelling variations
+* multilingual wording
+* semantic relationships
+* contextual Islamic understanding
+
+The goal is to create one of the most powerful Islamic AI retrieval systems capable of searching through:
+
+* the complete Quran
+* lakhs/millions of Hadith records
+* multilingual Islamic datasets
+* semantic topic relationships
+
+while maintaining:
+
+* authenticity
+* speed
+* scalability
+* precision
+* trustworthiness
+
+---
+
+# Core Vision
+
+The search engine must NOT rely only on simple keyword matching.
+
+Instead, the engine must understand:
+
+* meanings
+* intent
+* concepts
+* related Islamic terminology
+* emotional context
+* cross-language relationships
+
+The system should behave like an intelligent Islamic semantic retrieval engine.
+
+---
+
+# Massive Semantic Islamic Engine Upgrade
+
+## Requirement
+
+Upgrade the current semantic system into a large-scale AI-powered Islamic semantic engine.
+
+The engine must support:
+
+* millions of records
+* multilingual retrieval
+* semantic understanding
+* synonym mapping
+* transliteration support
+* spelling correction
+* concept expansion
+* emotional intent detection
+* contextual Islamic understanding
+
+Supported Languages:
+
+* English
+* Urdu
+* Hindi
+* Bengali
+* Roman Urdu
+* Arabic
+
+---
+
+# Large-Scale Semantic Word Mapping
+
+Build an extremely large semantic dictionary and topic graph.
+
+The engine must support:
+
+* synonyms
+* root words
+* transliterations
+* spelling mistakes
+* semantic relationships
+* phrase understanding
+* emotional intent
+* contextual understanding
+
+Examples:
+
+| User Input | Internal Meaning                | Topic       |
+| ---------- | ------------------------------- | ----------- |
+| dhairya    | patience                        | sabr        |
+| dheeraj    | patience                        | sabr        |
+| sabr       | patience                        | patience    |
+| gussa      | anger                           | anger       |
+| krodh      | anger                           | anger       |
+| maafi      | forgiveness                     | forgiveness |
+| hasad      | jealousy                        | jealousy    |
+| shirk      | associating partners with Allah | shirk       |
+| tawakkul   | trust in Allah                  | trust_allah |
+| iman       | faith                           | belief      |
+| hidayat    | guidance                        | guidance    |
+
+---
+
+# Semantic Relationship Expansion
+
+The engine must automatically understand related Islamic meanings.
+
+Examples:
+
+| User Query               | Semantic Expansion |
+| ------------------------ | ------------------ |
+| association with god     | shirk              |
+| worship others           | shirk              |
+| partners with Allah      | shirk              |
+| patience during hardship | sabr               |
+| trusting Allah           | tawakkul           |
+| Prophet family           | ahl_albayt         |
+
+The engine should intelligently connect meanings instead of depending only on exact words.
+
+---
+
+# Scalable Islamic Semantic Training
+
+The system must be designed for future scalability.
+
+Future dataset size includes:
+
+* full Quran
+* all major Hadith collections
+* multilingual translations
+* topic indexes
+* tafsir references
+* semantic embeddings
+* emotional mappings
+
+The semantic engine must remain fast and scalable even with millions of records.
+
+---
+
+# Advanced Islamic Concept Mapping
+
+Every Islamic concept must contain:
+
+* synonyms
+* related concepts
+* transliterations
+* spelling variations
+* emotional meanings
+* phrase relationships
+* contextual usage
+
+Current Concepts:
+
+* shirk
+* tawheed
+* iman
+* taqwa
+* sabr
+* shukr
+* tawakkul
+* dua
+* salah
+* zakat
+* akhlaq
+* sunnah
+* tarbiyah
+* ahl_albayt
+* backbiting
+* jealousy
+* modesty
+* sadaqah
+* brotherhood
+* repentance
+* forgiveness
+* rizq
+* halal
+* haram
+* dhikr
+* tafakkur
+* patience
+* gratitude
+* mercy
+* kindness
+* honesty
+* anger control
+
+Add max to max  additional advanced Islamic concepts and continuously expand the semantic graph automatically.
+
+---
+
+# Multi-Language Semantic Intelligence
+
+The search engine must understand the same meaning across different languages.
+
+Examples:
+
+| Query  | Meaning  |
+| ------ | -------- |
+| धैर्य  | patience |
+| sabr   | patience |
+| dhiraj | patience |
+| ক্রোধ  | anger    |
+| gussa  | anger    |
+| ईमान   | faith    |
+| iman   | faith    |
+| امید   | hope     |
+| umeed  | hope     |
+
+All variations must map to the same internal semantic concept.
+
+---
+
+# Strong Query Normalization Engine
+
+Before searching, preprocess every query intelligently.
+
+The engine must:
+
+* remove noise words
+* normalize intent
+* detect topic
+* detect emotional meaning
+* remove duplicate words
+* clean punctuation
+* normalize transliterations
+
+Examples:
+
+Input:
+"Iman kise kahte hai Islam me?"
+
+Normalized:
+"iman"
+
+Input:
+"What does Islam say about patience?"
+
+Normalized:
+"patience"
+
+Input:
+"कुरान के अनुसार सब्र क्या है?"
+
+Normalized:
+"sabr"
+
+---
+
+# Expanded Query Cleanup Rules
+
+## English
+
+Remove:
+
+* what is
+* who is
+* how to
+* explain
+* tell me about
+* what does Islam say about
+
+## Roman Urdu
+
+Remove:
+
+* kya hai
+* mujhe batao
+* islam mein kya
+* quran mein
+* kise kahte hai
+
+## Hindi
+
+Remove:
+
+* क्या है
+* इस्लाम क्या कहता
+* कुरान के अनुसार
+* बताइए
+
+## Bengali
+
+Remove:
+
+* ইসলামে কি
+* কি বলে
+
+## Arabic
+
+Remove:
+
+* ما هو
+* كيف
+* في الإسلام
+
+Also remove:
+
+* punctuation
+* repeated words
+* question marks
+* unnecessary suffixes
+
+---
+
+# 4-Layer Intelligent Search Pipeline
+
+## Layer 1 — Exact Match
+
+Highest priority exact keyword and phrase matching.
+
+Examples:
+
+* sabr
+* shirk
+* Abu Bakr
+
+Exact matches must always rank first.
+
+---
+
+## Layer 2 — Relaxed Match
+
+Partial phrase and semantic word matching.
+
+Example:
+
+"sabr rakhna"
+
+should still retrieve patience-related references.
+
+---
+
+## Layer 3 — Semantic Expansion
+
+Expand meanings using:
+
+* topic graphs
+* synonym dictionaries
+* semantic mappings
+
+Example:
+
+"dheeraj"
+
+expands internally to:
+
+* patience
+* sabr
+* endurance
+
+---
+
+## Layer 4 — Fuzzy Matching
+
+Handle:
+
+* spelling mistakes
+* transliteration errors
+* typo tolerance
+
+Examples:
+
+* sherk → shirk
+* imaan → iman
+
+Use:
+
+* Fuse.js
+* weighted fuzzy search
+* typo-tolerant ranking
+* transliteration-aware matching
+
+---
+
+# AI Retrieval Requirements
+
+The AI must:
+
+* retrieve references from dataset first
+* simplify answers emotionally
+* explain in beginner-friendly language
+* maintain Islamic authenticity
+* avoid hallucinations
+
+The AI must NEVER:
+
+* invent Quran references
+* invent Hadith references
+* use unsupported Islamic evidence
+
+---
+
+# Search Performance Requirements
+
+Because datasets contain millions of records:
+
+DO NOT use:
+
+* fs.readFile() for every search
+
+Instead implement:
+
+* MongoDB Atlas Search
+* indexed retrieval
+* semantic indexing
+* vector embeddings
+* Redis caching
+* precomputed topic maps
+* lazy loading
+* retrieval optimization
+
+---
+
+# Future AI Search Architecture
+
+Recommended Retrieval Pipeline:
+
+User Question
+↓
+Query Normalization
+↓
+Language Detection
+↓
+Semantic Expansion
+↓
+Topic Mapping
+↓
+Indexed Quran/Hadith Search
+↓
+Semantic Ranking
+↓
+Reference Extraction
+↓
+Gemini/OpenAI Simplification
+↓
+Final Structured Islamic Answer
+
+---
+
+# Final Goal
+
+Hidhaya AI should become:
+
+* highly accurate
+* multilingual
+* semantic-search powered
+* emotionally intelligent
+* context-aware
+* scalable
+* authentic
+* reference-safe
+* extremely fast
+
+Core Philosophy:
+
+“Authenticity first, intelligent guidance second.”

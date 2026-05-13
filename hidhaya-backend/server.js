@@ -1,6 +1,42 @@
+require('dotenv').config();
 const { app, initializeApp } = require("./app");
+const net = require('net');
 
 const PORT = process.env.PORT || 5000;
+
+// Function to find an available port
+const findAvailablePort = async (startPort, maxAttempts = 10) => {
+  let port = startPort;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const tester = net.createServer();
+        tester.once('error', (err) => {
+          if (err.code === 'EADDRINUSE') {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+        tester.once('listening', () => {
+          tester.close(() => {
+            resolve();
+          });
+        });
+        tester.listen(port, '0.0.0.0');
+      });
+      return port;
+    } catch (e) {
+      if (e.code === 'EADDRINUSE') {
+        console.warn(`Port ${port} is in use, trying next port...`);
+        port++;
+      } else {
+        throw e;
+      }
+    }
+  }
+  throw new Error(`No available port found after ${maxAttempts} attempts starting from ${startPort}`);
+};
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -31,19 +67,21 @@ const startServer = async () => {
     await initializeApp();
     console.log("✅ initializeApp completed, about to listen on port...");
 
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    const availablePort = await findAvailablePort(parseInt(PORT));
+
+    const server = app.listen(availablePort, '0.0.0.0', () => {
       console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
 ║   🤖 Hidhaya AI Backend                                    ║
 ║   Your Personal Islamic Companion                          ║
 ║                                                            ║
-║   Server running on port ${PORT}                             ║
+║   Server running on port ${availablePort}                             ║
 ║   Environment: ${process.env.NODE_ENV || 'development'}                          ║
 ║                                                            ║
 ║   Endpoints:                                               ║
-║   - Health: http://localhost:${PORT}/health                  ║
-║   - API:    http://localhost:${PORT}/api                      ║
+║   - Health: http://localhost:${availablePort}/health                  ║
+║   - API:    http://localhost:${availablePort}/api                      ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
       `);

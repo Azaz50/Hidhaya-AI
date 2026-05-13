@@ -232,7 +232,10 @@ function ChatBubble({ message, onBookmark }) {
   }
 
   // Parse the AI response into sections based on ✦ markers
-  const sections = parseAISections(message.content);
+  const sections = parseAISections(message.content || '');
+
+  // Fallback: if no sections or empty content, show raw content
+  const showRawContent = !message.content || (sections.length === 0) || (sections.length === 1 && !sections[0].title && !sections[0].content);
 
   return (
     <motion.div
@@ -246,16 +249,22 @@ function ChatBubble({ message, onBookmark }) {
           {/* AI Header */}
           <div className="px-4 py-3 pb-0">
             <div className="flex items-center gap-2 mb-3">
-              <img src={hidhayaLogo} alt="Hidhaya" className="w-8 h-8 object-contain" />
+              <img src={hidhayaLogo} alt="Hidhaya" className="w-8 h-8 object-cover" />
               <span className="text-sm font-semibold text-[var(--color-foreground)]">Hidhaya AI</span>
             </div>
           </div>
 
           {/* Rendered sections */}
           <div className="px-4 pb-3">
-            {sections.map((section, idx) => (
-              <SectionRenderer key={idx} section={section} />
-            ))}
+            {showRawContent ? (
+              <div className="text-sm whitespace-pre-wrap">
+                {message.content || 'Processing...'}
+              </div>
+            ) : (
+              sections.map((section, idx) => (
+                <SectionRenderer key={idx} section={section} />
+              ))
+            )}
           </div>
 
           {/* References */}
@@ -626,6 +635,7 @@ export function ChatPanel() {
   const {
     messages,
     addMessage,
+    updateMessage,
     isLoading,
     setIsLoading,
     chatId,
@@ -655,6 +665,14 @@ export function ChatPanel() {
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Ensure guestId exists on first load
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('hidhaya_guest_id')) {
+      const newGuestId = crypto.randomUUID();
+      localStorage.setItem('hidhaya_guest_id', newGuestId);
     }
   }, []);
 
@@ -731,11 +749,20 @@ export function ChatPanel() {
       const guestId = typeof window !== 'undefined'
         ? localStorage.getItem('hidhaya_guest_id')
         : undefined;
+      const token = typeof window !== 'undefined'
+        ? localStorage.getItem('token')
+        : undefined;
+
+      // Build headers
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       // Use streaming endpoint for faster response
       const res = await fetch('/api/chat/ask/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           question: text,
           chatId: chatId || undefined,
@@ -747,9 +774,12 @@ export function ChatPanel() {
         signal: controller.signal,
       });
 
+      
       // Handle streaming response
       if (!res.ok || !res.body) {
-        throw new Error('Failed to fetch');
+        const errorText = await res.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
       }
 
       // Create empty AI message that will be updated as stream comes in
@@ -783,34 +813,28 @@ export function ChatPanel() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              let refs = [];
 
-              if (data.type === 'search_start') {
+              if (data.type === 'search_complete') {
+                refs = data.references || [];
                 searchMetadata = data.searchMetadata;
               } else if (data.type === 'chunk') {
                 fullResponse += data.text;
-                // Update the message in real-time
-                setMessages(prev => prev.map(m =>
-                  m.id === aiMessageId
-                    ? { ...m, content: fullResponse }
-                    : m
-                ));
+                updateMessage(aiMessageId, { content: fullResponse });
               } else if (data.type === 'complete') {
-                references = data.references || [];
-                // Final update with references
-                setMessages(prev => prev.map(m =>
-                  m.id === aiMessageId
-                    ? { ...m, content: data.response, references: { quran: references.filter(r => r.type === 'quran'), hadith: references.filter(r => r.type === 'hadith') }, isStreaming: false }
-                    : m
-                ));
+                updateMessage(aiMessageId, {
+                  content: data.response,
+                  references: { quran: refs.filter(r => r.type === 'quran'), hadith: refs.filter(r => r.type === 'hadith') },
+                  isStreaming: false
+                });
               } else if (data.type === 'error') {
-                setMessages(prev => prev.map(m =>
-                  m.id === aiMessageId
-                    ? { ...m, content: data.message || "An error occurred", isStreaming: false }
-                    : m
-                ));
+                updateMessage(aiMessageId, {
+                  content: data.message || "An error occurred",
+                  isStreaming: false
+                });
               }
             } catch (e) {
-              // Skip invalid JSON
+              console.error('❌ JSON parse error:', e, 'Line was:', line);
             }
           }
         }
@@ -819,15 +843,21 @@ export function ChatPanel() {
       // Load usage and chat history after completion
       try {
         const gId = localStorage.getItem('hidhaya_guest_id');
+        const token = localStorage.getItem('token');
         if (gId) {
-          const usageRes = await fetch(`/api/usage?guestId=${gId}`);
+          const headers = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          const usageRes = await fetch(`/api/chat/usage?guestId=${gId}`, { headers });
           const usageData = await usageRes.json();
           if (usageData.usedToday !== undefined) {
             useHidhayaStore.getState().setUsage(usageData);
           }
+          await loadChatHistory();
         }
-      } catch { /* silent */ }
-      loadChatHistory();
+      } catch (err) {
+        console.error('Error loading usage/history:', err);
+      }
 
       setIsLoading(false);
       return;
@@ -902,7 +932,7 @@ export function ChatPanel() {
               className="text-center max-w-lg"
             >
               <div className="w-16 h-16 rounded-2xl bg-emerald-100 bg-[var(--color-primary)]900/30 flex items-center justify-center mx-auto mb-4">
-                <img src={hidhayaLogo} alt="Hidhaya" className="w-10 h-10 object-contain" />
+                <img src={hidhayaLogo} alt="Hidhaya" className="object-cover w-full h-full rounded-[10px]" />
               </div>
               <p className="text-lg font-semibold text-[var(--color-primary)] mb-2">As-salamu alaykum</p>
               <h2 className="text-xl font-semibold text-[var(--color-foreground)] mb-2">

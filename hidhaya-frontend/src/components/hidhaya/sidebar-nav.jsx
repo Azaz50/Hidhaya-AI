@@ -62,7 +62,7 @@ function ChatHistoryItemRow({ chat, isActive, onSelect, onDelete }) {
     >
       <MessageCircle className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate">{chat.title || 'Untitled Chat'}</p>
+        <p className="text-xs font-medium truncate">{chat.title || chat.query || 'Untitled Chat'}</p>
         <p className="text-[10px] opacity-60">{timeAgo(chat.updatedAt)}</p>
       </div>
       {showDelete && (
@@ -134,9 +134,13 @@ function SidebarContent({ onClose }) {
     await deleteChat(chatIdToDelete);
   };
 
-  // Load chat history on mount
+  // Load chat history on mount and when user changes
   useEffect(() => {
-    loadChatHistory();
+    // Also check localStorage for guestId if user is not logged in
+    const localGuestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
+    if (user?.id || localGuestId) {
+      loadChatHistory();
+    }
   }, [user?.id, user?.guestId]);
 
   // Auto-scroll chat history to show latest conversations
@@ -237,11 +241,11 @@ function SidebarContent({ onClose }) {
             >
               {chatHistory.map((chat) => (
                 <ChatHistoryItemRow
-                  key={chat.id}
+                  key={chat._id}
                   chat={chat}
-                  isActive={chatId === chat.id}
-                  onSelect={() => handleLoadChat(chat.id)}
-                  onDelete={() => handleDeleteChat(chat.id)}
+                  isActive={chatId === chat._id}
+                  onSelect={() => handleLoadChat(chat._id)}
+                  onDelete={() => handleDeleteChat(chat._id)}
                 />
               ))}
             </div>

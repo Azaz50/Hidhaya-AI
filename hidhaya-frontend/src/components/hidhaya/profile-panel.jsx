@@ -265,7 +265,7 @@ export function ProfilePanel() {
                 }}
               >
                 <Crown className="w-4 h-4 mr-1" />
-                Upgrade Now - &#8377;199/mo
+                Upgrade Now - &#8377;99/mo
               </Button>
             </Card>
           )}

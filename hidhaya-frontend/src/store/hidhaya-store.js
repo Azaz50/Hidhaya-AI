@@ -84,11 +84,20 @@ export const useHidhayaStore = create((set, get) => ({
       messages: [...state.messages, message],
     })),
 
+  updateMessage: (id, updates) =>
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg.id === id ? { ...msg, ...updates } : msg
+      ),
+    })),
+
   clearMessages: () =>
     set({
       messages: [],
       chatId: null,
     }),
+
+  setMessages: (msgs) => set({ messages: msgs }),
 
   isLoading: false,
 
@@ -102,49 +111,53 @@ export const useHidhayaStore = create((set, get) => ({
 
   loadChatHistory: async () => {
     const state = get();
-
     const userId = state.user?.id;
-
-    const guestId =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('hidhaya_guest_id')
-        : null;
+    const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
 
     if (!userId && !guestId) return;
 
     try {
-      const param = userId
-        ? `userId=${userId}`
-        : `guestId=${guestId}`;
-
-      const res = await fetch(
-        `${API_BASE}/api/chat/history?${param}`
-      );
-
+      const param = userId ? `userId=${userId}` : `guestId=${guestId}`;
+      const res = await fetch(`${API_BASE}/api/chat/history?${param}`);
       const data = await res.json();
-
-      set({
-        chatHistory: data.chats || [],
-      });
+      set({ chatHistory: data.chats || [] });
     } catch (error) {
-      console.error(
-        'Failed to load chat history:',
-        error
-      );
+      console.error('Failed to load chat history:', error);
     }
   },
 
   loadChat: async (chatIdToLoad) => {
     try {
-      const res = await fetch(
-        `${API_BASE}/api/chat/${chatIdToLoad}`
-      );
+      const state = get();
+      const userId = state.user?.id;
+      const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
+      const param = userId ? `userId=${userId}` : (guestId ? `guestId=${guestId}` : '');
 
-      const data = await res.json();
+      const res = await fetch(`${API_BASE}/api/chat/${chatIdToLoad}${param ? '?' + param : ''}`);
+      const chat = await res.json();
 
-      if (data.messages) {
+      if (chat._id) {
+        const messages = [
+          {
+            id: crypto.randomUUID(),
+            role: 'user',
+            content: chat.query,
+            timestamp: chat.createdAt
+          },
+          {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: chat.response,
+            references: {
+              quran: (chat.references || []).filter(r => r.type === 'quran'),
+              hadith: (chat.references || []).filter(r => r.type === 'hadith')
+            },
+            timestamp: chat.createdAt
+          }
+        ];
+
         set({
-          messages: data.messages,
+          messages: messages,
           chatId: chatIdToLoad,
           activeView: 'chat',
         });
@@ -156,8 +169,13 @@ export const useHidhayaStore = create((set, get) => ({
 
   deleteChat: async (chatIdToDelete) => {
     try {
+      const state = get();
+      const userId = state.user?.id;
+      const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
+      const param = userId ? `userId=${userId}` : (guestId ? `guestId=${guestId}` : '');
+
       await fetch(
-        `${API_BASE}/api/chat/${chatIdToDelete}`,
+        `${API_BASE}/api/chat/${chatIdToDelete}${param ? '?' + param : ''}`,
         {
           method: 'DELETE',
         }
@@ -165,7 +183,7 @@ export const useHidhayaStore = create((set, get) => ({
 
       set((state) => ({
         chatHistory: state.chatHistory.filter(
-          (chat) => chat.id !== chatIdToDelete
+          (chat) => chat._id !== chatIdToDelete
         ),
 
         ...(state.chatId === chatIdToDelete

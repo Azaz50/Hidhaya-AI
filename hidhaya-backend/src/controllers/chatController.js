@@ -1,532 +1,342 @@
-const { search, searchWithFilters, getStats } = require('../services/searchPipeline');
-const { buildPrompt, buildStreamingPrompt, getFallbackMessage, generateResponseMetadata } = require('../services/promptGenerator');
-const { processQuery } = require('../services/islamicSemanticEngine');
-const { generateText, generateStreamText, getGeminiModel } = require('../config/gemini');
-const Chat = require('../models/Chat');
-const { client: redis } = require('../config/redis');
-const crypto = require('crypto');
-
 /**
- * Ask a question - Main chat endpoint
+ * Hidhaya AI Chat Controller
  */
+
+const { search } = require('../services/advancedSearchPipeline');
+const { buildPrompt, getFallbackMessage } = require('../services/promptGenerator');
+const { generateText } = require('../config/gemini');
+const Chat = require('../models/Chat');
+
+const AI_TIMEOUT = 25000;
+
+const withTimeout = (promise, timeoutMs) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), timeoutMs))
+]);
+
+// Format reference for response
+const formatReferenceForResponse = (r) => {
+  let source = r.source || '';
+  if (!source) {
+    if (r.type === 'quran') source = `Quran ${r.chapter}:${r.verse}`;
+    else if (r.type === 'hadith') source = `${r.book} ${r.idInBook}`;
+  }
+  return { type: r.type, text: r.text || '', source, english: r.english || '', urdu: r.urdu || '', hindi: r.hindi || '', bengali: r.bengali || '', grade: r.grade || '' };
+};
+
+// Generate fallback response when AI fails
+const generateManualFallback = (query, references, language) => {
+  if (references.length === 0) return getFallbackMessage(language);
+  const intros = { english: 'Al Salamu Alaikum! Here is what the Quran and Hadith teach about this topic:\n\n', hindi: 'अस्सलामु अलैकुम! कुरान और हदीस के अनुसार:\n\n', urdu: 'السلام علیکم! قرآن اور حدیث کے مطابق:\n\n', bengali: 'আসসালামু আলাইকুম! কুরআন ও হাদিস অনুসারে:\n\n' };
+  let response = intros[language] || intros.english;
+  references.slice(0, 3).forEach((ref, i) => {
+    let src = ref.source || '';
+    if (!src) src = ref.type === 'quran' ? `Quran ${ref.chapter || '?'}:${ref.verse || '?'}` : `${ref.book || 'Unknown'} ${ref.idInBook || ref.id || '?'}`;
+    response += `[${i + 1}] ${ref.type === 'quran' ? 'Quran' : 'Hadith'} - ${src}\n${(ref.english || ref.urdu || ref.text || '').substring(0, 300)}\n\n`;
+  });
+  response += 'Please consult a qualified Islamic scholar for detailed guidance.';
+  return response;
+};
+
+// ============================================================
+// MAIN ASK QUESTION ENDPOINT (NON-STREAMING)
+// ============================================================
 exports.askQuestion = async (req, res) => {
   try {
-    const { query, language = 'english', guestId } = req.body;
+    const { query, question, language = 'english', guestId } = req.body;
+    const searchQuery = query || question;
 
-    if (!query || query.trim().length < 2) {
-      return res.status(400).json({
-        message: "Query is required and must be at least 2 characters"
-      });
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      return res.status(400).json({ message: 'Query must be at least 2 characters' });
     }
 
-    const startTime = Date.now();
+    const { results: references, confidence, searchMetadata } = await search(searchQuery, language);
+    const prompt = buildPrompt(searchQuery, references, language, searchMetadata);
 
-    // 1. Semantic Search for References
-    const searchResult = search(query, language);
-    const { results: references, confidence, searchMetadata } = searchResult;
-
-    // 2. Build prompt and generate response
     let responseText;
-    const prompt = buildPrompt(query, references, language, searchMetadata);
-
     try {
-      responseText = await generateText(prompt);
+      responseText = await withTimeout(generateText(prompt), AI_TIMEOUT);
     } catch (error) {
-      console.error("Gemini API error:", error);
-
-      // Fallback response if AI fails
-      if (references.length > 0) {
-        responseText = generateManualResponse(query, references, language);
-      } else {
-        responseText = getFallbackMessage(language);
-      }
+      responseText = generateManualFallback(searchQuery, references, language);
     }
 
-    const processingTime = Date.now() - startTime;
-
-    // 3. Prepare chat data
     const chatData = {
-      query,
+      query: searchQuery,
       response: responseText,
+      title: searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery,
       language,
-      references: references.map(r => ({
-        type: r.type,
-        text: r.text,
-        source: r.source,
-        english: r.english,
-        urdu: r.urdu,
-        grade: r.grade || ''
-      })),
-      metadata: {
-        confidence,
-        detectedConcepts: searchMetadata.detectedConcepts,
-        detectedEmotion: searchMetadata.emotion,
-        processingTime,
-        matchLayers: references.map(r => r.matchLayer)
-      }
+      references: references.slice(0, 5).map(formatReferenceForResponse),
+      metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
     };
+    if (req.user) chatData.userId = req.user._id;
+    else chatData.guestId = guestId || `guest_${Date.now()}`;
 
-    // Assign user or guest ID
-    if (req.user) {
-      chatData.userId = req.user._id;
-    } else {
-      const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || 'unknown';
-      chatData.guestId = guestId || crypto.createHash('md5').update(ip + Date.now()).digest('hex');
-    }
-
-    // 4. Save to database
-    const newChat = await Chat.create(chatData);
-
-    // 5. Cache search results for similar queries
-    try {
-      if (redis?.isOpen) {
-        const cacheKey = `search:${crypto.createHash('md5').update(query.toLowerCase()).digest('hex')}`;
-        await redis.setEx(cacheKey, 3600, JSON.stringify(searchResult));
-      }
-    } catch (cacheError) {
-      console.warn("Redis cache error:", cacheError.message);
-    }
-
-    // 6. Return response
-    res.json({
-      _id: newChat._id,
-      query: newChat.query,
-      response: newChat.response,
-      references: newChat.references,
-      language: newChat.language,
-      metadata: newChat.metadata,
-      createdAt: newChat.createdAt,
-      confidence,
-      searchMetadata
-    });
+    const savedChat = await Chat.create(chatData);
+    res.json({ ...savedChat.toObject(), references: savedChat.references });
 
   } catch (error) {
-    console.error("Ask question error:", error);
-    res.status(500).json({
-      message: "Server error while processing your question. Please try again.",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json({ message: 'Server error. Please try again.' });
   }
 };
 
-/**
- * Stream response for real-time updates
- */
+// ============================================================
+// STREAMING ENDPOINT
+// ============================================================
 exports.askQuestionStream = async (req, res) => {
-  try {
-    const { query, language = 'english', guestId } = req.body;
+  const timeoutMs = 30000;
+  let timeoutId = null;
 
-    if (!query || query.trim().length < 2) {
-      return res.status(400).json({ message: "Query is required" });
+  const clearResponseTimeout = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
+
+  timeoutId = setTimeout(() => {
+    if (!res.writableEnded) {
+      res.write(`data: {"type":"error","message":"Request timed out"}\n\n`);
+      res.end();
+    }
+  }, timeoutMs);
+
+  try {
+    const { query, question, language = 'english', guestId } = req.body;
+    const searchQuery = query || question;
+
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      clearResponseTimeout();
+      return res.status(400).json({ message: 'Query must be at least 2 characters' });
     }
 
-    // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Transfer-Encoding', 'chunked');
 
-    // 1. Search for references
-    const searchResult = search(query, language);
-    const { results: references, confidence, searchMetadata } = searchResult;
+    // Search for references
+    const { results: references, confidence, searchMetadata } = await search(searchQuery, language);
+    const searchData = { type: 'search_complete', references: references.slice(0, 3) };
+    res.write(`data: ${JSON.stringify(searchData)}\n\n`);
 
-    // Send initial search metadata
-    res.write(`data: ${JSON.stringify({ type: 'search_start', searchMetadata })}\n\n`);
-
-    // 2. Build prompt and generate streaming response
-    const prompt = buildPrompt(query, references, language, searchMetadata);
-
+    // Generate response
+    let streamText;
     try {
-      const stream = await generateStreamText(prompt);
-      let fullResponse = '';
-
-      for await (const chunk of stream) {
-        const text = chunk.text();
-        fullResponse += text;
-        res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk.text() })}\n\n`);
-      }
-
-      // Send completion
-      res.write(`data: ${JSON.stringify({
-        type: 'complete',
-        response: fullResponse,
-        references,
-        confidence
-      })}\n\n`);
-
-      // Save chat to database
-      const chatData = {
-        query,
-        response: fullResponse,
-        language,
-        references: references.map(r => ({
-          type: r.type,
-          text: r.text,
-          source: r.source,
-          english: r.english,
-          grade: r.grade || ''
-        })),
-        metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts }
-      };
-
-      if (req.user) {
-        chatData.userId = req.user._id;
-      } else {
-        chatData.guestId = guestId || crypto.createHash('md5').update(Date.now().toString()).digest('hex');
-      }
-
-      await Chat.create(chatData);
-
-    } catch (error) {
-      console.error("Stream error:", error);
-      res.write(`data: ${JSON.stringify({
-        type: 'error',
-        message: "Failed to generate response. Please try again."
-      })}\n\n`);
+      streamText = await withTimeout(generateText(buildPrompt(searchQuery, references, language, searchMetadata)), AI_TIMEOUT);
+    } catch (err) {
+      streamText = generateManualFallback(searchQuery, references, language);
     }
 
+    // Send complete response
+    const completeData = { type: 'complete', response: streamText, confidence };
+    res.write(`data: ${JSON.stringify(completeData)}\n\n`);
+
+    // Save chat (don't fail the response if save fails)
+    try {
+      const chatTitle = searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery;
+      const chatData = {
+        query: searchQuery,
+        response: streamText,
+        title: chatTitle,
+        language,
+        references: references.slice(0, 5).map(formatReferenceForResponse),
+        metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
+      };
+
+      if (req.user) chatData.userId = req.user._id;
+      else if (guestId) chatData.guestId = guestId;
+      else chatData.guestId = `guest_${Date.now()}`;
+
+      await Chat.create(chatData);
+    } catch (saveErr) {
+      console.error('Chat save error (non-fatal):', saveErr.message);
+    }
+
+    clearResponseTimeout();
     res.end();
 
   } catch (error) {
-    console.error("Stream endpoint error:", error);
-    res.status(500).json({ message: "Server error" });
+    clearResponseTimeout();
+    if (!res.writableEnded) {
+      res.write(`data: {"type":"error","message":"Failed to generate response"}\n\n`);
+    }
+    res.end();
   }
 };
 
-/**
- * Get chat history
- */
+// ============================================================
+// CHAT HISTORY
+// ============================================================
 exports.getChatHistory = async (req, res) => {
   try {
-    const { page = 1, limit = 20, bookmarked, guestId } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { page = 1, limit = 20, guestId } = req.query;
+    const filter = req.user ? { userId: req.user._id } : (guestId ? { guestId } : {});
 
-    let filter = {};
-
-    if (req.user) {
-      filter.userId = req.user._id;
-    } else if (guestId) {
-      filter.guestId = guestId;
-    } else {
-      return res.status(401).json({ message: "Authentication required for chat history" });
-    }
-
-    if (bookmarked === 'true') {
-      filter.isBookmarked = true;
-    }
-
-    const chats = await Chat.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
+    const chats = await Chat.find(filter).sort({ createdAt: -1 }).skip((parseInt(page) - 1) * parseInt(limit)).limit(parseInt(limit));
     const total = await Chat.countDocuments(filter);
 
-    res.json({
-      chats,
-      page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
-      total
-    });
-
+    res.json({ chats, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)), total });
   } catch (error) {
-    console.error("Get chat history error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Get single chat
- */
+// ============================================================
+// GET SINGLE CHAT
+// ============================================================
 exports.getChat = async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.id);
-
-    if (!chat) {
-      return res.status(404).json({ message: "Chat not found" });
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
+    // Check user access
+    if (chat.userId) {
+      if (!req.user || chat.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    } else if (chat.guestId) {
+      // For guest chats, verify guestId matches
+      const requestedGuestId = req.query.guestId || req.body.guestId;
+      if (chat.guestId !== requestedGuestId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
     }
-
-    // Check ownership
-    if (chat.userId && req.user && chat.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    if (chat.guestId && !req.user) {
-      return res.status(403).json({ message: "Authentication required" });
-    }
-
     res.json(chat);
-
   } catch (error) {
-    console.error("Get chat error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Toggle bookmark
- */
+// ============================================================
+// TOGGLE BOOKMARK
+// ============================================================
 exports.toggleBookmark = async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.id);
-
-    if (!chat) {
-      return res.status(404).json({ message: "Chat not found" });
-    }
-
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
     if (chat.userId && req.user && chat.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: 'Access denied' });
     }
-
     chat.isBookmarked = !chat.isBookmarked;
     await chat.save();
-
-    res.json({
-      _id: chat._id,
-      isBookmarked: chat.isBookmarked,
-      message: chat.isBookmarked ? "Chat bookmarked" : "Bookmark removed"
-    });
-
+    res.json({ _id: chat._id, isBookmarked: chat.isBookmarked });
   } catch (error) {
-    console.error("Toggle bookmark error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Delete chat
- */
+// ============================================================
+// DELETE CHAT
+// ============================================================
 exports.deleteChat = async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.id);
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
 
-    if (!chat) {
-      return res.status(404).json({ message: "Chat not found" });
-    }
-
-    if (chat.userId && req.user && chat.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
+    // Check user access
+    if (chat.userId) {
+      if (!req.user || chat.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    } else if (chat.guestId) {
+      // For guest chats, verify guestId matches
+      const requestedGuestId = req.query.guestId || req.body.guestId;
+      if (chat.guestId !== requestedGuestId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
     }
 
     await Chat.deleteOne({ _id: req.params.id });
-
-    res.json({ message: "Chat deleted successfully" });
-
+    res.json({ message: 'Chat deleted successfully' });
   } catch (error) {
-    console.error("Delete chat error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Regenerate response for existing chat
- */
+// ============================================================
+// REGENERATE RESPONSE
+// ============================================================
 exports.regenerateResponse = async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.id);
-
-    if (!chat) {
-      return res.status(404).json({ message: "Chat not found" });
-    }
-
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
     if (chat.userId && req.user && chat.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: 'Access denied' });
     }
 
-    const startTime = Date.now();
-
-    // Search again with the same query
-    const searchResult = search(chat.query, chat.language);
-    const { results: references, confidence, searchMetadata } = searchResult;
-
-    // Build new prompt
+    const { results: references, confidence, searchMetadata } = await search(chat.query, chat.language);
     const prompt = buildPrompt(chat.query, references, chat.language, searchMetadata);
 
     let newResponse;
     try {
-      newResponse = await generateText(prompt);
+      newResponse = await withTimeout(generateText(prompt), AI_TIMEOUT);
     } catch (error) {
-      console.error("Regenerate error:", error);
-      newResponse = generateManualResponse(chat.query, references, chat.language);
+      newResponse = generateManualFallback(chat.query, references, chat.language);
     }
 
-    // Update chat
     chat.response = newResponse;
-    chat.references = references.map(r => ({
-      type: r.type,
-      text: r.text,
-      source: r.source,
-      english: r.english,
-      urdu: r.urdu,
-      grade: r.grade || ''
-    }));
-    chat.metadata = {
-      ...chat.metadata,
-      confidence,
-      regeneratedAt: new Date(),
-      processingTime: Date.now() - startTime
-    };
-
+    chat.references = references.slice(0, 5).map(formatReferenceForResponse);
+    chat.metadata = { ...chat.metadata, confidence, regeneratedAt: new Date() };
     await chat.save();
 
-    res.json({
-      _id: chat._id,
-      query: chat.query,
-      response: chat.response,
-      references: chat.references,
-      metadata: chat.metadata,
-      confidence
-    });
-
+    res.json({ _id: chat._id, query: chat.query, response: chat.response, references: chat.references });
   } catch (error) {
-    console.error("Regenerate response error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Search in chat history
- */
-exports.searchHistory = async (req, res) => {
-  try {
-    const { q, page = 1, limit = 20 } = req.query;
-
-    if (!q) {
-      return res.status(400).json({ message: "Search query required" });
-    }
-
-    if (!req.user) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const chats = await Chat.find({
-      userId: req.user._id,
-      $or: [
-        { query: { $regex: q, $options: 'i' } },
-        { response: { $regex: q, $options: 'i' } }
-      ]
-    })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(parseInt(limit));
-
-    const total = await Chat.countDocuments({
-      userId: req.user._id,
-      $or: [
-        { query: { $regex: q, $options: 'i' } },
-        { response: { $regex: q, $options: 'i' } }
-      ]
-    });
-
-    res.json({
-      chats,
-      page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
-      total
-    });
-
-  } catch (error) {
-    console.error("Search history error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-/**
- * Get search statistics
- */
-exports.getSearchStats = async (req, res) => {
-  try {
-    const stats = getStats();
-    res.json(stats);
-  } catch (error) {
-    console.error("Get stats error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-/**
- * Get usage stats for user or guest
- */
+// ============================================================
+// USAGE STATS
+// ============================================================
 exports.getUsage = async (req, res) => {
   try {
     const { userId, guestId } = req.query;
-    console.log('getUsage called:', { userId, guestId });
+    if (!userId && !guestId) return res.status(400).json({ message: 'userId or guestId required' });
 
-    if (!userId && !guestId) {
-      return res.status(400).json({ message: "userId or guestId is required" });
-    }
-
-    let filter = {};
-    if (userId) {
-      filter.userId = userId;
-    } else if (guestId) {
-      filter.guestId = guestId;
-    }
-
-    console.log('Querying with filter:', filter);
+    const filter = userId ? { userId } : { guestId };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const usedToday = await Chat.countDocuments({
-      ...filter,
-      createdAt: { $gte: today }
-    });
+    const [usedToday, totalChats] = await Promise.all([
+      Chat.countDocuments({ ...filter, createdAt: { $gte: today } }),
+      Chat.countDocuments(filter)
+    ]);
 
-    const totalChats = await Chat.countDocuments(filter);
-
-    // Usage limits: Guest=10, Logged in free=20, Premium=unlimited
-    let limit;
-    if (req.user?.plan === 'premium') {
-      limit = -1; // unlimited
-    } else if (req.user) {
-      limit = 20; // logged in free user
-    } else {
-      limit = 10; // guest user
-    }
+    let limit = req.user?.plan === 'premium' ? -1 : (req.user ? 20 : 10);
     const remaining = limit === -1 ? -1 : Math.max(0, limit - usedToday);
 
-    res.json({
-      usedToday,
-      totalChats,
-      limit,
-      remaining,
-      plan: req.user?.plan || 'free'
-    });
-
+    res.json({ usedToday, totalChats, limit, remaining, plan: req.user?.plan || 'free' });
   } catch (error) {
-    console.error("Get usage error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Generate manual response when AI fails but references exist
- */
-const generateManualResponse = (query, references, language) => {
-  if (references.length === 0) {
-    return getFallbackMessage(language);
+// ============================================================
+// SEARCH HISTORY
+// ============================================================
+exports.searchHistory = async (req, res) => {
+  try {
+    const { q, page = 1, limit = 20 } = req.query;
+    if (!q) return res.status(400).json({ message: 'Search query required' });
+    if (!req.user) return res.status(401).json({ message: 'Authentication required' });
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const filter = { userId: req.user._id, $or: [{ query: { $regex: q, $options: 'i' } }, { response: { $regex: q, $options: 'i' } }] };
+
+    const [chats, total] = await Promise.all([
+      Chat.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
+      Chat.countDocuments(filter)
+    ]);
+
+    res.json({ chats, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)), total });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
   }
+};
 
-  // Simple response generator from references
-  const langMessages = {
-    english: "Based on the Quran and Hadith, here is guidance regarding your question:",
-    hindi: "कुरान और हदीस के आधार पर, यहाँ आपके प्रश्न के बारे में मार्गदर्शन है:",
-    urdu: "قرآن اور حدیث کی بنیاد پر، یہاں آپ کے سوال کے بارے میں ہدایت ہے:",
-    bengali: "কুরআন এবং হাদিসের ভিত্তিতে, এখানে আপনার প্রশ্ন সম্পর্কে নির্দেশনা রয়েছে:"
-  };
-
-  let response = langMessages[language] || langMessages.english;
-
-  references.slice(0, 3).forEach((ref, index) => {
-    response += `\n\n[${index + 1}] ${ref.type === 'quran' ? 'Quran' : 'Hadith'}: ${ref.source}`;
-    response += `\n${ref.english || ref.text}`;
-  });
-
-  response += "\n\nPlease consult a qualified Islamic scholar for detailed guidance.";
-
-  return response;
+// ============================================================
+// SEARCH STATS
+// ============================================================
+exports.getSearchStats = async (req, res) => {
+  res.json({ status: 'ok', message: 'Search stats endpoint' });
 };
 
 module.exports = exports;

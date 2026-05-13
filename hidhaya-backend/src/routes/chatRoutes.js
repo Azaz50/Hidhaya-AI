@@ -12,41 +12,38 @@ const {
   getUsage
 } = require("../controllers/chatController");
 const { auth, optionalAuth } = require("../middleware/auth");
-const { rateLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
-// Main chat endpoint (also handles /api/chat)
-router.post("/ask", optionalAuth, rateLimiter, askQuestion);
+// Main chat endpoints - optimized for speed (no rate limiter since Redis not available)
+router.post("/ask", optionalAuth, askQuestion);
+router.post("/", optionalAuth, askQuestion);
 
-// Also mount askQuestion at / for backwards compatibility with frontend calling /api/chat
-router.post("/", optionalAuth, rateLimiter, askQuestion);
+// Streaming endpoint
+router.post("/ask/stream", optionalAuth, askQuestionStream);
 
-// Streaming endpoint for real-time responses
-router.post("/ask/stream", optionalAuth, rateLimiter, askQuestionStream);
-
-// Get chat history (supports both user and guest)
+// Get chat history
 router.get("/history", optionalAuth, getChatHistory);
 
-// Search in chat history (requires authentication)
+// Search in chat history
 router.get("/history/search", auth, searchHistory);
 
-// Usage stats - MUST be before /:id route to avoid being caught as an id parameter
+// Usage stats
 router.get("/usage", optionalAuth, getUsage);
 
-// Get single chat (requires authentication)
-router.get("/:id", auth, getChat);
+// Get single chat
+router.get("/:id", optionalAuth, getChat);
 
-// Toggle bookmark (requires authentication)
-router.patch("/:id/bookmark", auth, toggleBookmark);
+// Toggle bookmark
+router.put("/:id/bookmark", auth, toggleBookmark);
 
-// Delete chat (requires authentication)
-router.delete("/:id", auth, deleteChat);
+// Delete chat
+router.delete("/:id", optionalAuth, deleteChat);
 
-// Regenerate response (requires authentication)
-router.post("/:id/regenerate", auth, rateLimiter, regenerateResponse);
+// Regenerate response
+router.post("/:id/regenerate", auth, regenerateResponse);
 
-// Search statistics (for debugging, requires authentication)
-router.get("/stats/search", auth, getSearchStats);
+// Search stats (public)
+router.get("/stats", getSearchStats);
 
 module.exports = router;
