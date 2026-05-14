@@ -209,23 +209,57 @@ exports.askQuestionStream = async (req, res) => {
 
     // Save chat (don't fail the response if save fails)
     try {
-      const chatTitle = searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery;
-      // Normalize language to full name for database storage
       const normalizedLanguage = getNormalizedLanguage(language);
-      const chatData = {
-        query: searchQuery,
-        response: streamText,
-        title: chatTitle,
-        language: normalizedLanguage,
-        references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)),
-        metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
-      };
+      const { chatId } = req.body;
+      let savedChat;
 
-      if (req.user) chatData.userId = req.user._id;
-      else if (guestId) chatData.guestId = guestId;
-      else chatData.guestId = `guest_${Date.now()}`;
+      if (chatId) {
+        // Continue existing chat - append messages
+        savedChat = await Chat.findById(chatId);
+        if (savedChat) {
+          savedChat.messages.push({
+            role: 'user',
+            content: searchQuery,
+            timestamp: new Date()
+          });
+          savedChat.messages.push({
+            role: 'assistant',
+            content: streamText,
+            references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)),
+            timestamp: new Date()
+          });
+          if (!savedChat.title) {
+            savedChat.title = searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery;
+          }
+          savedChat.metadata = { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] };
+          await savedChat.save();
+        }
+      }
 
-      await Chat.create(chatData);
+      // Create new chat if no existing one
+      if (!savedChat) {
+        const chatTitle = searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery;
+        const chatData = {
+          title: chatTitle,
+          language: normalizedLanguage,
+          messages: [
+            { role: 'user', content: searchQuery, timestamp: new Date() },
+            { role: 'assistant', content: streamText, references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)), timestamp: new Date() }
+          ],
+          metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
+        };
+
+        if (req.user) chatData.userId = req.user._id;
+        else if (guestId) chatData.guestId = guestId;
+        else chatData.guestId = `guest_${Date.now()}`;
+
+        savedChat = await Chat.create(chatData);
+      }
+
+      // Send back the chatId
+      const chatIdData = { type: 'chat_id', chatId: savedChat._id.toString() };
+      res.write(`data: ${JSON.stringify(chatIdData)}\n\n`);
+
     } catch (saveErr) {
       console.error('Chat save error (non-fatal):', saveErr.message);
     }
@@ -371,14 +405,23 @@ exports.getUsage = async (req, res) => {
     if (!userId && !guestId) return res.status(400).json({ message: 'userId or guestId required' });
 
     const filter = userId ? { userId } : { guestId };
+
+    // Count user messages (each question = 1 usage)
+    const chats = await Chat.find(filter);
+    let usedToday = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [usedToday, totalChats] = await Promise.all([
-      Chat.countDocuments({ ...filter, createdAt: { $gte: today } }),
-      Chat.countDocuments(filter)
-    ]);
+    chats.forEach(chat => {
+      const userMessages = (chat.messages || []).filter(m => m.role === 'user');
+      const chatDate = new Date(chat.createdAt);
+      chatDate.setHours(0, 0, 0, 0);
+      if (chatDate.getTime() >= today.getTime()) {
+        usedToday += userMessages.length;
+      }
+    });
 
+    const totalChats = chats.length;
     let limit = req.user?.plan === 'premium' ? -1 : (req.user ? 20 : 10);
     const remaining = limit === -1 ? -1 : Math.max(0, limit - usedToday);
 

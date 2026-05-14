@@ -146,24 +146,28 @@ export const useHidhayaStore = create((set, get) => ({
       const chat = await res.json();
 
       if (chat._id) {
-        const messages = [
-          {
+        let messages = [];
+
+        // New format: messages array
+        if (chat.messages && chat.messages.length > 0) {
+          messages = chat.messages.map((msg) => ({
             id: crypto.randomUUID(),
-            role: 'user',
-            content: chat.query,
-            timestamp: chat.createdAt
-          },
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: chat.response,
+            role: msg.role,
+            content: msg.content,
             references: {
-              quran: (chat.references || []).filter(r => r.type === 'quran'),
-              hadith: (chat.references || []).filter(r => r.type === 'hadith')
+              quran: (msg.references || []).filter(r => r.type === 'quran'),
+              hadith: (msg.references || []).filter(r => r.type === 'hadith')
             },
-            timestamp: chat.createdAt
-          }
-        ];
+            timestamp: msg.timestamp || chat.createdAt
+          }));
+        }
+        // Old format: query/response (backward compatibility)
+        else if (chat.query && chat.response) {
+          messages = [
+            { id: crypto.randomUUID(), role: 'user', content: chat.query, timestamp: chat.createdAt },
+            { id: crypto.randomUUID(), role: 'assistant', content: chat.response, references: { quran: [], hadith: [] }, timestamp: chat.createdAt }
+          ];
+        }
 
         set({
           messages: messages,

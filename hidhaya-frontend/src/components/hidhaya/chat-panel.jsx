@@ -864,6 +864,8 @@ export function ChatPanel() {
                   content: data.message || "An error occurred",
                   isStreaming: false
                 });
+              } else if (data.type === 'chat_id') {
+                if (data.chatId) setChatId(data.chatId);
               }
             } catch (e) {
               console.error('❌ JSON parse error:', e, 'Line was:', line);
