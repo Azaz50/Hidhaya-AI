@@ -111,15 +111,18 @@ export const useHidhayaStore = create((set, get) => ({
 
   loadChatHistory: async () => {
     const state = get();
-    // Use user._id for registered users, guestId for guests
     const userId = state.user?._id;
     const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_token') : null;
 
     if (!userId && !guestId) return;
 
     try {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const param = userId ? `userId=${userId}` : `guestId=${guestId}`;
-      const res = await fetch(`${API_BASE}/api/chat/history?${param}`);
+      const res = await fetch(`${API_BASE}/api/chat/history?${param}`, { headers });
       const data = await res.json();
       set({ chatHistory: data.chats || [] });
     } catch (error) {
@@ -132,9 +135,14 @@ export const useHidhayaStore = create((set, get) => ({
       const state = get();
       const userId = state.user?._id;
       const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_token') : null;
+
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const param = userId ? `userId=${userId}` : (guestId ? `guestId=${guestId}` : '');
 
-      const res = await fetch(`${API_BASE}/api/chat/${chatIdToLoad}${param ? '?' + param : ''}`);
+      const res = await fetch(`${API_BASE}/api/chat/${chatIdToLoad}${param ? '?' + param : ''}`, { headers });
       const chat = await res.json();
 
       if (chat._id) {
@@ -173,12 +181,18 @@ export const useHidhayaStore = create((set, get) => ({
       const state = get();
       const userId = state.user?._id;
       const guestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_token') : null;
+
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const param = userId ? `userId=${userId}` : (guestId ? `guestId=${guestId}` : '');
 
       await fetch(
         `${API_BASE}/api/chat/${chatIdToDelete}${param ? '?' + param : ''}`,
         {
           method: 'DELETE',
+          headers,
         }
       );
 
@@ -323,6 +337,28 @@ export const useHidhayaStore = create((set, get) => ({
           isGuest: true,
         },
       });
+    }
+
+    // Load chat history after initialization
+    if (userId) {
+      set({ chatHistory: [] });
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      try {
+        const res = await fetch(`${API_BASE}/api/chat/history?userId=${userId}`, { headers });
+        const data = await res.json();
+        set({ chatHistory: data.chats || [] });
+      } catch (e) {
+        console.error('Failed to load chat history:', e);
+      }
+    } else if (guestId) {
+      set({ chatHistory: [] });
+      try {
+        const res = await fetch(`${API_BASE}/api/chat/history?guestId=${guestId}`);
+        const data = await res.json();
+        set({ chatHistory: data.chats || [] });
+      } catch (e) {
+        console.error('Failed to load chat history:', e);
+      }
     }
   },
 }));

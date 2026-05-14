@@ -136,12 +136,11 @@ function SidebarContent({ onClose }) {
 
   // Load chat history on mount and when user changes
   useEffect(() => {
-    // Also check localStorage for guestId if user is not logged in
     const localGuestId = typeof window !== 'undefined' ? localStorage.getItem('hidhaya_guest_id') : null;
     if (user?._id || localGuestId) {
       loadChatHistory();
     }
-  }, [user?._id, user?.guestId]);
+  }, [user]);
 
   // Auto-scroll chat history to show latest conversations
   useEffect(() => {

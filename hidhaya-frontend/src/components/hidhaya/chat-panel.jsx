@@ -782,7 +782,7 @@ export function ChatPanel() {
         ? localStorage.getItem('hidhaya_guest_id')
         : undefined;
       const token = typeof window !== 'undefined'
-        ? localStorage.getItem('token')
+        ? localStorage.getItem('hidhaya_token')
         : undefined;
 
       // Build headers
@@ -875,18 +875,26 @@ export function ChatPanel() {
       // Load usage and chat history after completion
       try {
         const gId = localStorage.getItem('hidhaya_guest_id');
-        const token = localStorage.getItem('token');
-        if (gId) {
-          const headers = {};
-          if (token) headers['Authorization'] = `Bearer ${token}`;
+        const token = localStorage.getItem('hidhaya_token');
+        const user = useHidhayaStore.getState().user;
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
+        // Use userId if logged in, guestId otherwise
+        if (user?._id) {
+          const usageRes = await fetch(`/api/chat/usage?userId=${user._id}`, { headers });
+          const usageData = await usageRes.json();
+          if (usageData.usedToday !== undefined) {
+            useHidhayaStore.getState().setUsage(usageData);
+          }
+        } else if (gId) {
           const usageRes = await fetch(`/api/chat/usage?guestId=${gId}`, { headers });
           const usageData = await usageRes.json();
           if (usageData.usedToday !== undefined) {
             useHidhayaStore.getState().setUsage(usageData);
           }
-          await loadChatHistory();
         }
+        await loadChatHistory();
       } catch (err) {
         console.error('Error loading usage/history:', err);
       }
