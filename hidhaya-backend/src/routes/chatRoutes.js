@@ -9,7 +9,8 @@ const {
   regenerateResponse,
   searchHistory,
   getSearchStats,
-  getUsage
+  getUsage,
+  debugSearch
 } = require("../controllers/chatController");
 const { auth, optionalAuth } = require("../middleware/auth");
 
@@ -45,5 +46,8 @@ router.post("/:id/regenerate", auth, regenerateResponse);
 
 // Search stats (public)
 router.get("/stats", getSearchStats);
+
+// Debug endpoint - test database and search
+router.get("/debug-search", debugSearch);
 
 module.exports = router;

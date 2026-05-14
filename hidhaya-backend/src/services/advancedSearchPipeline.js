@@ -1,6 +1,6 @@
 /**
  * Advanced 4-Layer Islamic Search Pipeline
- * As per planning.txt requirements
+ * Phase 2: BM25, Fuzzy, Cross-language, Phonetic Matching
  * Layer 1: Exact Match
  * Layer 2: Relaxed Match (partial words)
  * Layer 3: Semantic Expansion (concept mapping)
@@ -11,7 +11,20 @@ const mongoose = require('mongoose');
 const Fuse = require('fuse.js');
 const Quran = require('../models/Quran');
 const Hadith = require('../models/Hadith');
-// Semantic mapping functions are already defined in this file
+// Import the new comprehensive semantic engine
+const semanticEngine = require('./islamicSemanticEngine');
+const processQuery = semanticEngine.processQuery;
+const semanticDetectConcepts = semanticEngine.detectConcepts;
+const expandQueryWithConcepts = semanticEngine.expandQueryWithConcepts;
+const semanticNormalizeQuery = semanticEngine.normalizeQuery;
+const semanticDetectLanguage = semanticEngine.detectLanguage;
+const islamicConcepts = semanticEngine.islamicConcepts;
+// Import Phase 2 advanced search module
+const { hybridSearch, BM25, fuzzyMatch, expandQueryCrossLanguage, phoneticSimilarity } = require('./advancedSearch');
+// Import Phase 3 performance optimizer
+const { searchCache, searchMetrics, getSearchField, optimizedQuranSearch, optimizedHadithSearch, createIndexes } = require('./performanceOptimizer');
+// Keep old imports for backward compatibility
+const { detectProphet, detectAllahConcept, ALLAH_CONCEPTS, PROPHETS } = require('./semanticMapping');
 
 // Check MongoDB connection - dynamic check for each operation
 const isMongoConnected = () => {
@@ -114,75 +127,42 @@ const loadFallbackData = () => {
 };
 
 // ============================================================
-// LAYER 1: Exact Match - Highest priority
-// ============================================================
-const layer1ExactMatch = async (query, language) => {
-  if (!query) return [];
-
-  const normalizedQuery = query.toLowerCase().trim();
-  let results = [];
-
-  try {
-    // Try MongoDB first
-    if (isMongoConnected()) {
-      const searchField = getLanguageField(language);
-      console.log(`🔍 Layer1 MongoDB search: field="${searchField}", query="${normalizedQuery}"`);
-      const quranResults = await Quran.find({
-        [searchField]: { $regex: normalizedQuery, $options: 'i' }
-      }).limit(5).lean();
-
-      const hadithResults = await Hadith.find({
-        [searchField]: { $regex: normalizedQuery, $options: 'i' }
-      }).limit(5).lean();
-
-      console.log(`🔍 Layer1 results: quran=${quranResults.length}, hadith=${hadithResults.length}`);
-
-      results = [
-        ...quranResults.map(r => ({ ...r, type: 'quran', matchLayer: 'exact', confidence: 1.0 })),
-        ...hadithResults.map(r => ({ ...r, type: 'hadith', matchLayer: 'exact', confidence: 1.0 }))
-      ];
-    }
-  } catch (e) { console.error('Layer1 error:', e.message); }
-
-  // If no results, use fallback exact matching
-  if (results.length === 0) {
-    loadFallbackData();
-    const searchText = (doc) => {
-      switch (language) {
-        case 'urdu': return doc.urdu?.toLowerCase() || '';
-        case 'hindi': return doc.hindi?.toLowerCase() || '';
-        case 'bengali': return doc.bengali?.toLowerCase() || '';
-        default: return doc.english?.toLowerCase() || '';
-      }
-    };
-
-    results = fallbackDocuments
-      .filter(doc => searchText(doc).includes(normalizedQuery))
-      .slice(0, 10)
-      .map(doc => ({ ...doc, matchLayer: 'exact', confidence: 1.0 }));
-  }
-
-  return results;
-};
-
-// ============================================================
-// LAYER 2: Relaxed Match - Partial word matching
+// LAYER 2: Relaxed Match - Old function (replaced by layer1ExactMatchWithTerms)
+// Kept for reference, not used by new search()
 // ============================================================
 const layer2RelaxedMatch = async (query, language) => {
   if (!query) return [];
 
+  // Split into words and get terms with 3+ characters
   const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
   if (words.length === 0) return [];
+
+  // Expand with semantic terms
+  let searchTerms = [...words];
+  const detectedProphet = detectProphet(query);
+  const detectedAllahConcept = detectAllahConcept(query);
+
+  if (detectedProphet && PROPHETS[detectedProphet]) {
+    searchTerms = [...searchTerms, ...PROPHETS[detectedProphet].synonyms];
+  }
+  if (detectedAllahConcept && ALLAH_CONCEPTS[detectedAllahConcept]) {
+    searchTerms = [...searchTerms, ...ALLAH_CONCEPTS[detectedAllahConcept].synonyms];
+  }
+  searchTerms = [...new Set(searchTerms)];
 
   let results = [];
 
   try {
     if (isMongoConnected()) {
-      const searchField = getLanguageField(language);
-      const orConditions = words.map(w => ({ [searchField]: { $regex: w, $options: 'i' } }));
+      // Build OR conditions for all search terms across all language fields
+      const orConditions = searchTerms.flatMap(term =>
+        ['english', 'urdu', 'hindi', 'bengali', 'arabic'].map(field => ({
+          [field]: { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
+        }))
+      );
 
-      const quranResults = await Quran.find({ $or: orConditions }).limit(10).lean();
-      const hadithResults = await Hadith.find({ $or: orConditions }).limit(10).lean();
+      const quranResults = await Quran.find({ $or: orConditions }).limit(12).lean();
+      const hadithResults = await Hadith.find({ $or: orConditions }).limit(12).lean();
 
       results = [
         ...quranResults.map(r => ({ ...r, type: 'quran', matchLayer: 'relaxed', confidence: 0.7 })),
@@ -213,20 +193,34 @@ const layer3SemanticMatch = async (query, concepts) => {
     expandedTerms.push(...semanticTerms);
   }
 
+  // Also add prophet and Allah concept terms
+  const detectedProphet = detectProphet(query);
+  const detectedAllahConcept = detectAllahConcept(query);
+
+  if (detectedProphet && PROPHETS[detectedProphet]) {
+    expandedTerms.push(...PROPHETS[detectedProphet].synonyms);
+    expandedTerms.push(...PROPHETS[detectedProphet].topics || []);
+  }
+
+  if (detectedAllahConcept && ALLAH_CONCEPTS[detectedAllahConcept]) {
+    expandedTerms.push(...ALLAH_CONCEPTS[detectedAllahConcept].synonyms);
+    expandedTerms.push(...ALLAH_CONCEPTS[detectedAllahConcept].topics || []);
+  }
+
+  const uniqueTerms = [...new Set(expandedTerms)];
+
   let results = [];
 
   try {
     if (isMongoConnected()) {
-      const orConditions = expandedTerms.map(term => ({
-        $or: [
-          { topics: term },
-          { english: { $regex: term, $options: 'i' } },
-          { urdu: { $regex: term, $options: 'i' } }
-        ]
-      }));
+      const orConditions = uniqueTerms.flatMap(term =>
+        ['topics', 'keywords', 'english', 'urdu', 'hindi', 'bengali', 'arabic'].map(field => ({
+          [field]: { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
+        }))
+      );
 
-      const quranResults = await Quran.find({ $or: orConditions }).limit(8).lean();
-      const hadithResults = await Hadith.find({ $or: orConditions }).limit(8).lean();
+      const quranResults = await Quran.find({ $or: orConditions }).limit(10).lean();
+      const hadithResults = await Hadith.find({ $or: orConditions }).limit(10).lean();
 
       results = [
         ...quranResults.map(r => ({ ...r, type: 'quran', matchLayer: 'semantic', confidence: 0.6 })),
@@ -305,40 +299,194 @@ const getSemanticTerms = (concept) => {
 };
 
 // ============================================================
-// Main Search Function - 4 Layer Pipeline
+// PHASE 2: ADVANCED SEARCH - BM25, Fuzzy, Cross-language, Phonetic
+// ============================================================
+
+const performAdvancedSearch = async (query, documents) => {
+  if (!documents || documents.length === 0) {
+    return { results: [], scores: {} };
+  }
+
+  try {
+    const result = await hybridSearch(query, documents, {
+      enableBM25: true,
+      enableFuzzy: true,
+      enableCrossLanguage: true,
+      enablePhonetic: true,
+      bm25Weight: 0.4,
+      fuzzyWeight: 0.3,
+      crossLangWeight: 0.2,
+      phoneticWeight: 0.1,
+      topN: 15
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Advanced search error:', error.message);
+    return { results: [], scores: {} };
+  }
+};
+
+// ============================================================
+// Main Search Function - 4 Layer Pipeline with Phase 2 & 3
 // ============================================================
 const search = async (query, language = 'english') => {
+  const startTime = Date.now();
   if (!query) {
     return { results: [], confidence: 'none', searchMetadata: { query, detectedConcepts: [] } };
   }
 
-  // Parse concepts from query
-  const detectedConcepts = extractConcepts(query);
-  const normalizedQuery = normalizeQuery(query, language);
-
-  // Layer 1: Exact Match (highest priority)
-  let results = await layer1ExactMatch(normalizedQuery, language);
-  let matchLayers = { exact: results.length };
-
-  // Layer 2: Relaxed Match (if exact didn't find enough)
-  if (results.length < 5) {
-    const relaxed = await layer2RelaxedMatch(normalizedQuery, language);
-    results = [...results, ...relaxed];
-    matchLayers.relaxed = relaxed.length;
+  // Phase 3: Check cache first
+  const cachedResults = searchCache.get(query, language);
+  if (cachedResults) {
+    searchMetrics.recordQuery({ cacheHit: true, responseTime: Date.now() - startTime });
+    return { ...cachedResults, fromCache: true };
   }
 
-  // Layer 3: Semantic Expansion (if still not enough)
-  if (results.length < 5 && detectedConcepts.length > 0) {
-    const semantic = await layer3SemanticMatch(normalizedQuery, detectedConcepts);
-    results = [...results, ...semantic];
-    matchLayers.semantic = semantic.length;
+  // Use the new comprehensive semantic engine for query processing
+  let semanticResult = { detectedConcepts: [], normalizedQuery: query, expandedQuery: '', detectedLanguage: 'english', emotion: 'neutral' };
+  try {
+    semanticResult = processQuery(query, language);
+  } catch (e) {
+    console.error('Semantic engine error:', e.message);
   }
 
-  // Layer 4: Fuzzy Match (fallback for typos)
+  const detectedConcepts = semanticResult.detectedConcepts || [];
+  const normalizedQuery = semanticResult.normalizedQuery || query;
+  const expandedQuery = semanticResult.expandedQuery || '';
+
+  // Debug: Log what we're searching for
+  console.log(`🔍 Search query: "${query}" -> normalized: "${normalizedQuery}"`);
+  console.log(`   Detected concepts: ${detectedConcepts.join(', ') || 'none'}`);
+  console.log(`   MongoDB connected: ${isMongoConnected()}`);
+
+  // Build expanded search terms using both old and new semantic systems
+  let searchTerms = [normalizedQuery];
+
+  // Add terms from detected concepts (new semantic engine)
+  for (const concept of detectedConcepts) {
+    const conceptData = islamicConcepts[concept];
+    if (conceptData) {
+      // Add all synonyms
+      searchTerms.push(...conceptData.synonyms);
+      // Add translations
+      for (const translations of Object.values(conceptData.translations)) {
+        searchTerms.push(...translations);
+      }
+    }
+  }
+
+  // Also check for prophets and Allah concepts (old semantic mapping)
+  const detectedProphet = detectProphet(query);
+  const detectedAllahConcept = detectAllahConcept(query);
+
+  if (detectedProphet && PROPHETS[detectedProphet]) {
+    searchTerms.push(...PROPHETS[detectedProphet].synonyms);
+  }
+  if (detectedAllahConcept && ALLAH_CONCEPTS[detectedAllahConcept]) {
+    searchTerms.push(...ALLAH_CONCEPTS[detectedAllahConcept].synonyms);
+  }
+
+  // Add expanded query terms
+  if (expandedQuery) {
+    searchTerms.push(...expandedQuery.split(/\s+/).filter(w => w.length > 2));
+  }
+
+  // Add cross-language expansions
+  const crossLangTerms = expandQueryCrossLanguage(query, language);
+  if (crossLangTerms.length > 0) {
+    searchTerms.push(...crossLangTerms);
+  }
+
+  // Remove duplicates and short terms
+  searchTerms = [...new Set(searchTerms)].filter(t => t.length > 1);
+
+  let results = [];
+  let matchLayers = { exact: 0, relaxed: 0, semantic: 0, fuzzy: 0, advanced: 0 };
+
+  // Try MongoDB first
+  if (isMongoConnected()) {
+    // Check if collections have data
+    try {
+      const quranCount = await Quran.countDocuments();
+      const hadithCount = await Hadith.countDocuments();
+      console.log(`   MongoDB collections: Quran=${quranCount}, Hadith=${hadithCount}`);
+
+      if (quranCount === 0 && hadithCount === 0) {
+        console.log('   ⚠️ MongoDB collections are empty! Data may not be seeded.');
+      }
+    } catch (countErr) {
+      console.error('   Count error:', countErr.message);
+    }
+
+    // Use Phase 3 optimized search functions
+    try {
+      const quranResults = await optimizedQuranSearch(normalizedQuery, language, Quran);
+      const hadithResults = await optimizedHadithSearch(normalizedQuery, language, Hadith);
+
+      console.log(`   MongoDB results: Quran=${quranResults.length}, Hadith=${hadithResults.length}`);
+
+      results = [
+        ...quranResults.slice(0, 5).map(r => ({ ...r, type: 'quran', matchLayer: 'exact', confidence: 1.0 })),
+        ...hadithResults.slice(0, 5).map(r => ({ ...r, type: 'hadith', matchLayer: 'exact', confidence: 1.0 }))
+      ];
+      matchLayers.exact = results.length;
+    } catch (error) {
+      console.log('Optimized search error:', error.message);
+      console.log('Falling back to layer-based search');
+      // Layer 1: Exact Match (highest priority)
+      let exactResults = await layer1ExactMatchWithTerms(searchTerms, language);
+      matchLayers.exact = exactResults.length;
+      results = [...results, ...exactResults];
+    }
+
+    // Layer 2: Relaxed Match (if exact didn't find enough)
+    if (results.length < 5) {
+      const relaxed = await layer2RelaxedMatchWithTerms(searchTerms, language);
+      results = [...results, ...relaxed];
+      matchLayers.relaxed = relaxed.length;
+    }
+
+    // Layer 3: Semantic Expansion (if still not enough)
+    if (results.length < 5 && detectedConcepts.length > 0) {
+      const semantic = await layer3SemanticMatchWithTerms(detectedConcepts);
+      results = [...results, ...semantic];
+      matchLayers.semantic = semantic.length;
+    }
+  } else {
+    // Use fallback data with Phase 2 advanced search
+    console.log('   MongoDB not connected, using fallback data');
+    loadFallbackData();
+
+    // Phase 2: Use advanced search (BM25, Fuzzy, Cross-language, Phonetic)
+    const advancedResults = await performAdvancedSearch(query, fallbackDocuments);
+
+    if (advancedResults.results && advancedResults.results.length > 0) {
+      matchLayers.advanced = advancedResults.results.length;
+      results = advancedResults.results.map(r => ({
+        ...r,
+        matchLayer: 'advanced',
+        confidence: r.searchScore || 0.6,
+        advancedScores: r.scoreBreakdown
+      }));
+    } else {
+      // Fallback to basic search if advanced fails
+      results = fallbackDocuments
+        .filter(doc => searchTerms.some(term => {
+          const searchText = `${doc.english || ''} ${doc.urdu || ''} ${doc.hindi || ''} ${doc.bengali || ''}`.toLowerCase();
+          return searchText.includes(term.toLowerCase());
+        }))
+        .slice(0, 10)
+        .map(doc => ({ ...doc, matchLayer: 'exact', confidence: 0.7 }));
+      matchLayers.exact = results.length;
+    }
+  }
+
+  // Phase 2 Enhancement: Fuzzy matching for remaining queries
   if (results.length < 3) {
-    const fuzzy = await layer4FuzzyMatch(normalizedQuery);
-    results = [...results, ...fuzzy];
-    matchLayers.fuzzy = fuzzy.length;
+    const fuzzyResults = await layer4FuzzyMatch(normalizedQuery);
+    results = [...results, ...fuzzyResults];
+    matchLayers.fuzzy = fuzzyResults.length;
   }
 
   // Deduplicate and rank results
@@ -349,21 +497,168 @@ const search = async (query, language = 'english') => {
 
   // Debug: Log which data source is being used
   console.log(`🔍 Search using: ${isMongoConnected() ? 'MongoDB' : 'Fallback'}, results: ${results.length}, concepts: ${detectedConcepts.join(',')}`);
+  console.log(`   Match layers: ${JSON.stringify(matchLayers)}`);
+
+  // Record metrics
+  const responseTime = Date.now() - startTime;
+  searchMetrics.recordQuery({
+    cacheHit: false,
+    responseTime,
+    dataSource: isMongoConnected() ? 'mongodb' : 'fallback',
+    layer: results[0]?.matchLayer || 'unknown'
+  });
+
+  // Cache results for future queries
+  const finalSearchMetadata = {
+    query,
+    normalizedQuery,
+    detectedConcepts,
+    detectedLanguage: semanticResult.detectedLanguage,
+    emotion: semanticResult.emotion,
+    expandedQuery,
+    totalDocuments: isMongoConnected() ? 'indexed' : fallbackDocuments.length,
+    layerStats: matchLayers,
+    responseTime
+  };
+
+  if (results.length > 0) {
+    searchCache.set(query, language, { results, confidence, searchMetadata: finalSearchMetadata });
+  }
 
   return {
     results: results.slice(0, 10),
     confidence,
-    searchMetadata: {
-      query,
-      normalizedQuery,
-      detectedConcepts,
-      detectedLanguage: language,
-      emotion: detectEmotion(query),
-      expandedQuery: normalizedQuery,
-      totalDocuments: isMongoConnected() ? 'indexed' : fallbackDocuments.length,
-      layerStats: matchLayers
-    }
+    searchMetadata: finalSearchMetadata
   };
+};
+
+// Updated Layer 1 with terms array
+const layer1ExactMatchWithTerms = async (searchTerms, language) => {
+  if (!searchTerms || searchTerms.length === 0) return [];
+
+  let results = [];
+
+  try {
+    if (isMongoConnected()) {
+      // Build OR conditions for all search terms across all language fields
+      const orConditions = searchTerms.flatMap(term =>
+        ['english', 'urdu', 'hindi', 'bengali', 'arabic', 'text'].map(field => ({
+          [field]: { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
+        }))
+      );
+
+      console.log(`🔍 Layer1 MongoDB search: ${searchTerms.length} terms, language=${language}`);
+
+      const quranResults = await Quran.find({ $or: orConditions }).limit(8).lean();
+      const hadithResults = await Hadith.find({ $or: orConditions }).limit(8).lean();
+
+      results = [
+        ...quranResults.map(r => ({ ...r, type: 'quran', matchLayer: 'exact', confidence: 1.0 })),
+        ...hadithResults.map(r => ({ ...r, type: 'hadith', matchLayer: 'exact', confidence: 1.0 }))
+      ];
+    }
+  } catch (e) { console.error('Layer1 error:', e.message); }
+
+  // If no results, use fallback exact matching
+  if (results.length === 0) {
+    loadFallbackData();
+    const searchText = (doc) => {
+      return [
+        doc.english?.toLowerCase() || '',
+        doc.urdu?.toLowerCase() || '',
+        doc.hindi?.toLowerCase() || '',
+        doc.bengali?.toLowerCase() || '',
+        doc.text?.toLowerCase() || ''
+      ].join(' ');
+    };
+
+    results = fallbackDocuments
+      .filter(doc => searchTerms.some(term => searchText(doc).includes(term)))
+      .slice(0, 10)
+      .map(doc => ({ ...doc, matchLayer: 'exact', confidence: 1.0 }));
+  }
+
+  return results;
+};
+
+// Updated Layer 2 with terms array
+const layer2RelaxedMatchWithTerms = async (searchTerms, language) => {
+  if (!searchTerms || searchTerms.length === 0) return [];
+
+  let results = [];
+
+  try {
+    if (isMongoConnected()) {
+      const orConditions = searchTerms.flatMap(term =>
+        ['english', 'urdu', 'hindi', 'bengali', 'arabic', 'text'].map(field => ({
+          [field]: { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
+        }))
+      );
+
+      const quranResults = await Quran.find({ $or: orConditions }).limit(12).lean();
+      const hadithResults = await Hadith.find({ $or: orConditions }).limit(12).lean();
+
+      results = [
+        ...quranResults.map(r => ({ ...r, type: 'quran', matchLayer: 'relaxed', confidence: 0.7 })),
+        ...hadithResults.map(r => ({ ...r, type: 'hadith', matchLayer: 'relaxed', confidence: 0.7 }))
+      ];
+    }
+  } catch {}
+
+  if (results.length === 0 && fuseIndex) {
+    results = fuseIndex.search(searchTerms.join(' '), { limit: 10 })
+      .filter(r => r.score > 0.1 && r.score < 0.4)
+      .map(r => ({ ...r.item, matchLayer: 'relaxed', confidence: Math.max(0, 1 - r.score) }));
+  }
+
+  return results;
+};
+
+// Updated Layer 3 with detected concepts
+const layer3SemanticMatchWithTerms = async (detectedConcepts) => {
+  if (!detectedConcepts || detectedConcepts.length === 0) return [];
+
+  // Expand concepts to related terms
+  const expandedTerms = [];
+  for (const conceptKey of detectedConcepts) {
+    const conceptData = islamicConcepts[conceptKey];
+    if (conceptData) {
+      // Add topic
+      expandedTerms.push(conceptData.topic);
+      // Add synonyms
+      expandedTerms.push(...conceptData.synonyms);
+      // Add translations
+      for (const translations of Object.values(conceptData.translations)) {
+        expandedTerms.push(...translations);
+      }
+      // Add related topics
+      expandedTerms.push(...conceptData.relatedTopics);
+    }
+  }
+
+  const uniqueTerms = [...new Set(expandedTerms)];
+
+  let results = [];
+
+  try {
+    if (isMongoConnected()) {
+      const orConditions = uniqueTerms.flatMap(term =>
+        ['topics', 'keywords', 'english', 'urdu', 'hindi', 'bengali', 'arabic', 'text'].map(field => ({
+          [field]: { $regex: term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
+        }))
+      );
+
+      const quranResults = await Quran.find({ $or: orConditions }).limit(10).lean();
+      const hadithResults = await Hadith.find({ $or: orConditions }).limit(10).lean();
+
+      results = [
+        ...quranResults.map(r => ({ ...r, type: 'quran', matchLayer: 'semantic', confidence: 0.6 })),
+        ...hadithResults.map(r => ({ ...r, type: 'hadith', matchLayer: 'semantic', confidence: 0.6 }))
+      ];
+    }
+  } catch {}
+
+  return results;
 };
 
 // ============================================================
@@ -533,4 +828,37 @@ const getStats = async () => {
   };
 };
 
-module.exports = { search, getStats, normalizeQuery, extractConcepts, detectEmotion };
+// ============================================================
+// Initialize Database Indexes (call on startup)
+// ============================================================
+const initializeIndexes = async () => {
+  if (isMongoConnected()) {
+    try {
+      const results = await createIndexes(Quran, Hadith);
+      console.log('✅ Database indexes created:', results.length);
+      return results;
+    } catch (error) {
+      console.error('Index creation error:', error);
+      return [];
+    }
+  }
+  return [];
+};
+
+// Get performance metrics
+const getMetrics = () => searchMetrics.getMetrics();
+
+// Clear cache
+const clearCache = () => searchCache.clear();
+
+module.exports = {
+  search,
+  getStats,
+  normalizeQuery,
+  extractConcepts,
+  detectEmotion,
+  initializeIndexes,
+  getMetrics,
+  clearCache,
+  searchCache
+};

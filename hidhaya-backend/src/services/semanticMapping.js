@@ -334,13 +334,176 @@ const mapLanguageTerm = (term, targetLanguage) => {
   return languageMap[term]?.[targetLanguage] || term;
 };
 
+// Full authentic Hadith collection names mapping (per planning.txt)
+const HADITH_COLLECTION_NAMES = {
+  'bukhari': 'Sahih al-Bukhari',
+  'muslim': 'Sahih Muslim',
+  'abudawud': 'Sunan Abu Dawood',
+  'tirmidhi': "Jami' al-Tirmidhi",
+  'nasai': "Sunan al-Nasa'i",
+  'ibnmajah': 'Sunan Ibn Majah',
+  'malik': 'Muwatta Imam Malik',
+  'darimi': 'Sunan al-Darimi',
+  'ahmed': 'Musnad Ahmad bin Hanbal',
+  'mishkat_almasabih': 'Mishkat al-Masabih',
+  'aladab_almufrad': 'Al-Adab al-Mufrad',
+  'bulugh_almaram': 'Bulugh al-Maram',
+  'nawawi40': 'Forty Hadith of Imam Nawawi',
+  'qudsi40': 'Forty Hadith Qudsi',
+  'riyad_assalihin': 'Riyad al-Salihin',
+  'shahwaliullah40': 'Forty Hadith of Shah Waliullah',
+  'shamail_muhammadiah': 'Shamail al-Muhammadiah',
+  'shamail_muhammadiya': 'Shamail al-Muhammadiah'
+};
+
 module.exports = {
   ISLAMIC_CONCEPTS,
   NOISE_WORDS,
+  HADITH_COLLECTION_NAMES,
   normalizeQuery,
   extractConcepts,
   expandConcept,
   getSemanticTerms,
   detectEmotion,
-  mapLanguageTerm
+  mapLanguageTerm,
+
+  // Prophet Semantic Mapping (per planning.txt)
+  PROPHETS: {
+    muhammad: {
+      synonyms: ['muhammad pbuh', 'muhammad ﷺ', 'prophet muhammad', 'hazrat muhammad', 'holy prophet', 'saw', 'our prophet', 'sallallahu alaihi wasallam'],
+      languages: { arabic: 'محمد', urdu: 'نبی کریم', hindi: 'पैगंबर मुहम्मद', bengali: 'নবী মুহাম্মদ' },
+      topics: ['sunnah', 'quran', 'mercy', 'guidance', 'final prophet']
+    },
+    ibrahim: {
+      synonyms: ['ibrahim alaihisalam', 'abraham', 'khalilullah', 'hazrat ibrahim', 'prophet ibrahim', 'ibraheem'],
+      languages: { arabic: 'إبراهيم', urdu: 'حضرت ابراہیم', hindi: 'हजरत इब्राहिम', bengali: 'হজরত ইব্রাহিম' },
+      topics: ['sacrifice', 'tawheed', 'kaaba', 'building', 'monotheism']
+    },
+    musa: {
+      synonyms: ['musa alaihisalam', 'moses', 'moosa', 'hazrat musa', 'prophet musa'],
+      languages: { arabic: 'موسى', urdu: 'حضرت موسیٰ', hindi: 'हजरत मूसा', bengali: 'হজরত মুসা' },
+      topics: ['torah', 'prophecy', 'pharaoh', 'guidance', 'ten commandments']
+    },
+    isa: {
+      synonyms: ['isa alaihisalam', 'jesus', 'hazrat isa', 'prophet isa', ' Masih'],
+      languages: { arabic: 'عيسى', urdu: 'حضرت عیسیٰ', hindi: 'हजरत ईसा', bengali: 'হজরত ঈসা' },
+      topics: ['injil', 'prophecy', 'miracle', 'second coming']
+    },
+    nooh: {
+      synonyms: ['nooh alaihisalam', 'noah', 'hazrat nooh', 'prophet nooh', 'nuh'],
+      languages: { arabic: 'نوح', urdu: 'حضرت نوح', hindi: 'हजरत नूह', bengali: 'হজরত নূহ' },
+      topics: ['ark', 'flood', 'warning', 'salvation']
+    },
+    yusuf: {
+      synonyms: ['yusuf alaihisalam', 'joseph', 'hazrat yusuf', 'prophet yusuf'],
+      languages: { arabic: 'يوسف', urdu: 'حضرت یوسف', hindi: 'हजरत यूसुफ', bengali: 'হজরত ইউসুফ' },
+      topics: ['dream', 'wisdom', 'governance', 'family', 'patience']
+    },
+    dawood: {
+      synonyms: ['dawood alaihisalam', 'david', 'prophet dawood'],
+      languages: { arabic: 'داوود', urdu: 'حضرت داوود', hindi: 'हजरत दाऊद', bengali: 'হজরত দাউদ' },
+      topics: ['zabur', 'psalms', 'kingdom', 'justice']
+    },
+    sulaiman: {
+      synonyms: ['sulaiman alaihisalam', 'solomon', 'prophet sulaiman'],
+      languages: { arabic: 'سليمان', urdu: 'حضرت سلیمان', hindi: 'हजरत सुलेमान', bengali: 'হজরত সুলাইমান' },
+      topics: ['kingdom', 'wisdom', 'nature', 'judgment']
+    },
+    adam: {
+      synonyms: ['adam alaihisalam', 'prophet adam', 'adam'],
+      languages: { arabic: 'آدم', urdu: 'حضرت آدم', hindi: 'हजरत आदम', bengali: 'হজরত আদম' },
+      topics: ['creation', 'first man', 'knowledge', 'repentance']
+    },
+    ismail: {
+      synonyms: ['ismail alaihisalam', 'ishmael', 'prophet ismail'],
+      languages: { arabic: 'إسماعيل', urdu: 'حضرت اسماعیل', hindi: 'हजरत इस्माइल', bengali: 'হজরত ইসমাইল' },
+      topics: ['sacrifice', 'hajj', 'building', 'monotheism']
+    },
+    ishaq: {
+      synonyms: ['ishaq alaihisalam', 'isaac', 'prophet ishaq'],
+      languages: { arabic: 'إسحاق', urdu: 'حضرت اسحاق', hindi: 'हजरत इशाक', bengali: 'হজরত ইসহাক' },
+      topics: ['sacrifice', 'promise', 'prophecy']
+    },
+    ayyub: {
+      synonyms: ['ayyub alaihisalam', 'job', 'prophet ayyub'],
+      languages: { arabic: 'أيوب', urdu: 'حضرت ایوب', hindi: 'हजरत আইয়ুব', bengali: 'হজরত আইয়ুব' },
+      topics: ['patience', 'testing', 'perseverance', 'recovery']
+    },
+    yunus: {
+      synonyms: ['yunus alaihisalam', 'jonah', 'prophet yunus'],
+      languages: { arabic: 'يونيس', urdu: 'حضرت یونس', hindi: 'हजरत ইউনুস', bengali: 'হজরত ইউনুস' },
+      topics: ['whale', 'warning', 'repentance', 'prophecy']
+    },
+    hud: {
+      synonyms: ['hud alaihisalam', 'prophet hud', 'ever'],
+      languages: { arabic: 'هود', urdu: 'حضرت ہود', hindi: 'हजरत हूद', bengali: 'হজরত হুদ' },
+      topics: ['ad', 'warning', 'message']
+    },
+    salih: {
+      synonyms: ['salih alaihisalam', 'prophet salih'],
+      languages: { arabic: 'صالح', urdu: 'حضرت صالح', hindi: 'हजरत सालिह', bengali: 'হজরত সালেহ' },
+      topics: ['thamud', 'she-camel', 'warning']
+    },
+    lut: {
+      synonyms: ['lut alaihisalam', 'lot', 'prophet lut'],
+      languages: { arabic: 'لوط', urdu: 'حضرت لوط', hindi: 'हजरत लूत', bengali: 'হজরত লুত' },
+      topics: ['sodom', 'warning', 'hospitality']
+    },
+    zakariya: {
+      synonyms: ['zakariya alaihisalam', 'zachariah', 'prophet zakariya'],
+      languages: { arabic: 'زكريا', urdu: 'حضرت زکریا', hindi: 'हजरত জাকারিয়া', bengali: 'হজরত জাকারিয়াহ' },
+      topics: ['john the baptist', 'yusuf', 'patience']
+    },
+    harun: {
+      synonyms: ['harun alaihisalam', 'aaron', 'prophet harun'],
+      languages: { arabic: 'هارون', urdu: 'حضرت ہارون', hindi: 'हजरत হারুন', bengali: 'হজরত হারুন' },
+      topics: ['musa', 'leadership', 'guidance']
+    }
+  },
+
+  // Allah/Rab Semantic Mapping (per planning.txt)
+  ALLAH_CONCEPTS: {
+    allah: {
+      synonyms: ['khuda', 'rab', 'parvardigar', 'ilah', 'maalik', 'god', 'lord', 'creator'],
+      languages: { arabic: 'الله', urdu: 'اللہ', hindi: 'परमात्मा', bengali: 'আল্লাহ' },
+      topics: ['oneness', 'creator', 'sustainer', 'merciful', 'most powerful']
+    },
+    rab: {
+      synonyms: ['lord', 'master', 'cherisher', 'sustainer', 'rabb'],
+      languages: { arabic: 'رب', urdu: 'رب', hindi: 'प्रभु', bengali: 'রব' },
+      topics: ['lord', 'provider', 'sustainer']
+    },
+    tawheed: {
+      synonyms: ['oneness', 'monotheism', 'unity of god'],
+      languages: { arabic: 'توحید', urdu: 'توحید', hindi: 'एकत्व', bengali: 'তাওহীদ' },
+      topics: ['shirk', 'belief', 'oneness']
+    },
+    shirk: {
+      synonyms: ['polytheism', 'associating partners', 'idolatry'],
+      languages: { arabic: 'شرک', urdu: 'شرک', hindi: 'मूर्तिपूजा', bengali: 'শিরক' },
+      topics: ['tawheed', 'unforgivable', 'mushrik']
+    }
+  },
+
+  // Detect prophet from query
+  detectProphet: (query) => {
+    const lower = query.toLowerCase();
+    for (const [prophet, data] of Object.entries(module.exports.PROPHETS || {})) {
+      if (data.synonyms.some(s => lower.includes(s.toLowerCase()))) {
+        return prophet;
+      }
+    }
+    return null;
+  },
+
+  // Detect Allah concept from query
+  detectAllahConcept: (query) => {
+    const lower = query.toLowerCase();
+    for (const [concept, data] of Object.entries(module.exports.ALLAH_CONCEPTS || {})) {
+      if (data.synonyms.some(s => lower.includes(s.toLowerCase()))) {
+        return concept;
+      }
+    }
+    return null;
+  }
 };

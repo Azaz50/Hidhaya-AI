@@ -854,9 +854,10 @@ export function ChatPanel() {
                 fullResponse += data.text;
                 updateMessage(aiMessageId, { content: fullResponse });
               } else if (data.type === 'complete') {
+                const completeRefs = data.references || refs;
                 updateMessage(aiMessageId, {
                   content: data.response,
-                  references: { quran: refs.filter(r => r.type === 'quran'), hadith: refs.filter(r => r.type === 'hadith') },
+                  references: { quran: completeRefs.filter(r => r.type === 'quran'), hadith: completeRefs.filter(r => r.type === 'hadith') },
                   isStreaming: false
                 });
               } else if (data.type === 'error') {

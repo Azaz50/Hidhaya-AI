@@ -1,11 +1,16 @@
 /**
  * Hidhaya AI Chat Controller
+ * Phase 4: RAG Pipeline Optimization
  */
 
 const { search } = require('../services/advancedSearchPipeline');
 const { buildPrompt, getFallbackMessage, formatReferencesForResponse, getNormalizedLanguage, HADITH_COLLECTION_NAMES } = require('../services/promptGenerator');
+// Phase 4 imports
+const { confidenceScorer, buildRAGPrompt, optimizeContextWindow } = require('../services/ragOptimizer');
 const { generateText } = require('../config/gemini');
 const Chat = require('../models/Chat');
+const Quran = require('../models/Quran');
+const Hadith = require('../models/Hadith');
 
 const AI_TIMEOUT = 25000;
 
@@ -110,7 +115,7 @@ const generateManualFallback = (query, references, language) => {
 };
 
 // ============================================================
-// MAIN ASK QUESTION ENDPOINT (NON-STREAMING)
+// MAIN ASK QUESTION ENDPOINT (NON-STREAMING) - Phase 4
 // ============================================================
 exports.askQuestion = async (req, res) => {
   try {
@@ -121,14 +126,42 @@ exports.askQuestion = async (req, res) => {
       return res.status(400).json({ message: 'Query must be at least 2 characters' });
     }
 
-    const { results: references, confidence, searchMetadata } = await search(searchQuery, language);
-    const prompt = buildPrompt(searchQuery, references, language, searchMetadata);
+    // Phase 4: Enhanced search with metadata - wrapped in try-catch
+    let references = [];
+    let enhancedConfidence = { score: 0, level: 'none', factors: {} };
+    let recommendedFormat = { format: 'simple', sections: ['summary', 'guidance', 'closing', 'references'] };
+    let searchMetadata = { detectedConcepts: [], query: searchQuery };
 
-    let responseText;
     try {
+      const searchResult = await search(searchQuery, language);
+      references = searchResult.results || [];
+      searchMetadata = searchResult.searchMetadata || searchMetadata;
+      enhancedConfidence = confidenceScorer.calculateConfidence(references, searchMetadata);
+      recommendedFormat = confidenceScorer.getRecommendedFormat(enhancedConfidence, references);
+    } catch (searchErr) {
+      console.error('Search error:', searchErr.message);
+    }
+
+    // Phase 4: Optimize context window (max 4000 tokens)
+    const optimizedRefs = optimizeContextWindow(references, 4000);
+
+    // Phase 4: Build RAG prompt with proper format
+    let responseText = getFallbackMessage(language);
+    try {
+      const prompt = buildRAGPrompt(searchQuery, optimizedRefs, language, enhancedConfidence, {
+        format: recommendedFormat.format
+      });
       responseText = await withTimeout(generateText(prompt), AI_TIMEOUT);
-    } catch (error) {
-      responseText = generateManualFallback(searchQuery, references, language);
+    } catch (genErr) {
+      console.error('AI generation error:', genErr.message);
+      if (references.length > 0) {
+        responseText = generateManualFallback(searchQuery, references, language);
+      }
+    }
+
+    // Ensure response is not empty
+    if (!responseText || responseText.trim().length === 0) {
+      responseText = getFallbackMessage(language);
     }
 
     const chatData = {
@@ -137,21 +170,36 @@ exports.askQuestion = async (req, res) => {
       title: searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery,
       language: getNormalizedLanguage(language),
       references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)),
-      metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
+      // Phase 4: Enhanced metadata
+      metadata: {
+        confidence: enhancedConfidence,
+        confidenceLevel: enhancedConfidence.level,
+        detectedConcepts: searchMetadata.detectedConcepts || [],
+        searchScore: enhancedConfidence.score,
+        formatUsed: recommendedFormat.format,
+        responseFormat: recommendedFormat.sections,
+        referencesOptimized: optimizedRefs.length,
+        totalReferences: references.length
+      }
     };
     if (req.user) chatData.userId = req.user._id;
     else chatData.guestId = guestId || `guest_${Date.now()}`;
 
     const savedChat = await Chat.create(chatData);
-    res.json({ ...savedChat.toObject(), references: savedChat.references });
+    res.json({
+      ...savedChat.toObject(),
+      references: savedChat.references,
+      confidence: enhancedConfidence
+    });
 
   } catch (error) {
+    console.error('askQuestion error:', error);
     res.status(500).json({ message: 'Server error. Please try again.' });
   }
 };
 
 // ============================================================
-// STREAMING ENDPOINT
+// STREAMING ENDPOINT - Phase 4
 // ============================================================
 exports.askQuestionStream = async (req, res) => {
   const timeoutMs = 30000;
@@ -166,7 +214,7 @@ exports.askQuestionStream = async (req, res) => {
 
   timeoutId = setTimeout(() => {
     if (!res.writableEnded) {
-      res.write(`data: {"type":"error","message":"Request timed out"}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'error', message: 'Request timed out' })}\n\n`);
       res.end();
     }
   }, timeoutMs);
@@ -184,27 +232,71 @@ exports.askQuestionStream = async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    // Search for references
-    const { results: references, confidence, searchMetadata } = await search(searchQuery, language);
-    const searchData = { type: 'search_complete', references: references.slice(0, 3) };
+    // Phase 4: Enhanced search - wrap in try-catch
+    let references = [];
+    let enhancedConfidence = { score: 0, level: 'none', factors: {} };
+    let recommendedFormat = { format: 'simple', sections: ['summary', 'guidance', 'closing', 'references'] };
+    let searchMetadata = { detectedConcepts: [], query: searchQuery };
+    let searchError = null;
+
+    try {
+      const searchResult = await search(searchQuery, language);
+      references = searchResult.results || [];
+      searchMetadata = searchResult.searchMetadata || searchMetadata;
+      enhancedConfidence = confidenceScorer.calculateConfidence(references, searchMetadata);
+      recommendedFormat = confidenceScorer.getRecommendedFormat(enhancedConfidence, references);
+    } catch (searchErr) {
+      console.error('Search error:', searchErr.message);
+      searchError = searchErr;
+    }
+
+    // Send search results with confidence (even if empty)
+    const searchData = {
+      type: 'search_complete',
+      references: references.slice(0, 3),
+      confidence: enhancedConfidence
+    };
     res.write(`data: ${JSON.stringify(searchData)}\n\n`);
 
-    // Generate response
-    let streamText;
+    // Phase 4: Build RAG prompt and generate response
+    let streamText = getFallbackMessage(language); // Default fallback
+
     try {
-      streamText = await withTimeout(generateText(buildPrompt(searchQuery, references, language, searchMetadata)), AI_TIMEOUT);
-    } catch (err) {
-      console.error('AI generation failed, using fallback:', err.message);
-      try {
-        streamText = generateManualFallback(searchQuery, references, language);
-      } catch (fallbackErr) {
-        console.error('Fallback also failed:', fallbackErr.message);
+      const optimizedRefs = optimizeContextWindow(references, 4000);
+      const prompt = buildRAGPrompt(searchQuery, optimizedRefs, language, enhancedConfidence, {
+        format: recommendedFormat.format
+      });
+
+      // Generate response
+      streamText = await withTimeout(generateText(prompt), AI_TIMEOUT);
+    } catch (genErr) {
+      console.error('AI generation error:', genErr.message);
+      // Use fallback if AI generation fails
+      if (references.length > 0) {
+        try {
+          streamText = generateManualFallback(searchQuery, references, language);
+        } catch (fallbackErr) {
+          console.error('Fallback generation error:', fallbackErr.message);
+          streamText = getFallbackMessage(language);
+        }
+      } else {
         streamText = getFallbackMessage(language);
       }
     }
 
-    // Send complete response
-    const completeData = { type: 'complete', response: streamText, confidence };
+    // Ensure streamText is not empty
+    if (!streamText || streamText.trim().length === 0) {
+      streamText = getFallbackMessage(language);
+    }
+
+    // Send complete response with confidence and references
+    const completeData = {
+      type: 'complete',
+      response: streamText,
+      confidence: enhancedConfidence,
+      format: recommendedFormat.format,
+      references: references.slice(0, 5)
+    };
     res.write(`data: ${JSON.stringify(completeData)}\n\n`);
 
     // Save chat (don't fail the response if save fails)
@@ -231,7 +323,14 @@ exports.askQuestionStream = async (req, res) => {
           if (!savedChat.title) {
             savedChat.title = searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery;
           }
-          savedChat.metadata = { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] };
+          // Phase 4: Enhanced metadata
+          savedChat.metadata = {
+            confidence: enhancedConfidence,
+            confidenceLevel: enhancedConfidence.level,
+            detectedConcepts: searchMetadata.detectedConcepts || [],
+            searchScore: enhancedConfidence.score,
+            formatUsed: recommendedFormat.format
+          };
           await savedChat.save();
         }
       }
@@ -246,7 +345,7 @@ exports.askQuestionStream = async (req, res) => {
             { role: 'user', content: searchQuery, timestamp: new Date() },
             { role: 'assistant', content: streamText, references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)), timestamp: new Date() }
           ],
-          metadata: { confidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
+          metadata: { confidence: enhancedConfidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
         };
 
         if (req.user) chatData.userId = req.user._id;
@@ -268,9 +367,18 @@ exports.askQuestionStream = async (req, res) => {
     res.end();
 
   } catch (error) {
+    console.error('Streaming endpoint error:', error);
     clearResponseTimeout();
     if (!res.writableEnded) {
-      res.write(`data: {"type":"error","message":"Failed to generate response"}\n\n`);
+      // Send a graceful error response instead of just an error message
+      const errorResponse = {
+        type: 'complete',
+        response: getFallbackMessage(req.body.language || 'english'),
+        confidence: { score: 0, level: 'none' },
+        format: 'simple',
+        references: []
+      };
+      res.write(`data: ${JSON.stringify(errorResponse)}\n\n`);
     }
     res.end();
   }
@@ -365,7 +473,7 @@ exports.deleteChat = async (req, res) => {
 };
 
 // ============================================================
-// REGENERATE RESPONSE
+// REGENERATE RESPONSE - Phase 4
 // ============================================================
 exports.regenerateResponse = async (req, res) => {
   try {
@@ -375,8 +483,20 @@ exports.regenerateResponse = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Phase 4: Enhanced search
     const { results: references, confidence, searchMetadata } = await search(chat.query, chat.language);
-    const prompt = buildPrompt(chat.query, references, chat.language, searchMetadata);
+
+    // Phase 4: Calculate enhanced confidence
+    const enhancedConfidence = confidenceScorer.calculateConfidence(references, searchMetadata);
+    const recommendedFormat = confidenceScorer.getRecommendedFormat(enhancedConfidence, references);
+
+    // Phase 4: Optimize context
+    const optimizedRefs = optimizeContextWindow(references, 4000);
+
+    // Phase 4: Build RAG prompt
+    const prompt = buildRAGPrompt(chat.query, optimizedRefs, chat.language, enhancedConfidence, {
+      format: recommendedFormat.format
+    });
 
     let newResponse;
     try {
@@ -387,10 +507,23 @@ exports.regenerateResponse = async (req, res) => {
 
     chat.response = newResponse;
     chat.references = references.slice(0, 5).map(r => formatReferenceForResponse(r, chat.language));
-    chat.metadata = { ...chat.metadata, confidence, regeneratedAt: new Date() };
+    chat.metadata = {
+      confidence: enhancedConfidence,
+      confidenceLevel: enhancedConfidence.level,
+      detectedConcepts: searchMetadata.detectedConcepts || [],
+      searchScore: enhancedConfidence.score,
+      formatUsed: recommendedFormat.format,
+      regeneratedAt: new Date()
+    };
     await chat.save();
 
-    res.json({ _id: chat._id, query: chat.query, response: chat.response, references: chat.references });
+    res.json({
+      _id: chat._id,
+      query: chat.query,
+      response: chat.response,
+      references: chat.references,
+      confidence: enhancedConfidence
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -459,6 +592,63 @@ exports.searchHistory = async (req, res) => {
 // ============================================================
 exports.getSearchStats = async (req, res) => {
   res.json({ status: 'ok', message: 'Search stats endpoint' });
+};
+
+// ============================================================
+// DEBUG ENDPOINT - Test database directly (no search function)
+// ============================================================
+exports.debugSearch = async (req, res) => {
+  try {
+    const { query = 'honesty' } = req.query;
+
+    // Check MongoDB connection
+    const mongoose = require('mongoose');
+    const mongoConnected = mongoose.connection.readyState === 1;
+    console.log('Debug: MongoDB connected?', mongoConnected);
+
+    // Count documents
+    let quranCount = 0;
+    let hadithCount = 0;
+    let quranSample = [];
+    let hadithSample = [];
+
+    if (mongoConnected) {
+      quranCount = await Quran.countDocuments();
+      hadithCount = await Hadith.countDocuments();
+      console.log('Debug: Counts - Quran:', quranCount, 'Hadith:', hadithCount);
+
+      // Direct search in Quran
+      quranSample = await Quran.find({
+        $or: [
+          { english: { $regex: query, $options: 'i' } },
+          { urdu: { $regex: query, $options: 'i' } }
+        ]
+      }).limit(3).lean();
+      console.log('Debug: Quran search results:', quranSample.length);
+
+      // Direct search in Hadith
+      hadithSample = await Hadith.find({
+        $or: [
+          { english: { $regex: query, $options: 'i' } },
+          { urdu: { $regex: query, $options: 'i' } }
+        ]
+      }).limit(3).lean();
+      console.log('Debug: Hadith search results:', hadithSample.length);
+    }
+
+    res.json({
+      mongoConnected,
+      counts: { quran: quranCount, hadith: hadithCount },
+      query,
+      quranResults: quranSample.length,
+      hadithResults: hadithSample.length,
+      sampleQuran: quranSample.slice(0, 1).map(q => ({ english: q.english?.substring(0, 100) })),
+      sampleHadith: hadithSample.slice(0, 1).map(h => ({ english: h.english?.substring(0, 100) }))
+    });
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
 };
 
 module.exports = exports;
