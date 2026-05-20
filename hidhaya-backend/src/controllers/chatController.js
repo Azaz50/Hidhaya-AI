@@ -11,6 +11,7 @@ const { generateText } = require('../config/gemini');
 const Chat = require('../models/Chat');
 const Quran = require('../models/Quran');
 const Hadith = require('../models/Hadith');
+const User = require('../models/User');
 
 const AI_TIMEOUT = 25000;
 
@@ -126,6 +127,69 @@ exports.askQuestion = async (req, res) => {
       return res.status(400).json({ message: 'Query must be at least 2 characters' });
     }
 
+    // ============================================================
+    // DAILY USAGE LIMIT CHECK - Decrease on each question
+    // ============================================================
+    let userCanAsk = true;
+    let usageInfo = { usedToday: 0, limit: 20, remaining: -1 };
+    let isPremiumUser = false;
+    let currentUser = null;
+
+    if (req.user) {
+      // For logged-in users, check their daily limit
+      try {
+        currentUser = await User.findById(req.user._id);
+        if (currentUser) {
+          isPremiumUser = currentUser.isPremium === true;
+
+          if (!isPremiumUser) {
+            await currentUser.resetDailyCount();
+            userCanAsk = currentUser.dailyQuestionCount < 20;
+            usageInfo = {
+              usedToday: currentUser.dailyQuestionCount,
+              limit: 20,
+              remaining: Math.max(0, 20 - currentUser.dailyQuestionCount)
+            };
+            if (!userCanAsk) {
+              return res.status(429).json({
+                message: 'Daily question limit reached. Please upgrade to premium or try again tomorrow.',
+                usage: usageInfo
+              });
+            }
+          } else {
+            // Premium user - no limit
+            usageInfo = { usedToday: 0, limit: -1, remaining: -1, plan: 'premium' };
+          }
+        }
+      } catch (userErr) {
+        console.error('Error fetching user:', userErr.message);
+      }
+    } else if (guestId) {
+      // For guests, track usage by counting their chats today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      try {
+        const guestChats = await Chat.countDocuments({
+          guestId: guestId,
+          createdAt: { $gte: today }
+        });
+        userCanAsk = guestChats < 10;
+        usageInfo = {
+          usedToday: guestChats,
+          limit: 10,
+          remaining: Math.max(0, 10 - guestChats)
+        };
+        if (!userCanAsk) {
+          return res.status(429).json({
+            message: 'Daily question limit reached for guests. Please sign up for more questions.',
+            usage: usageInfo
+          });
+        }
+      } catch (guestErr) {
+        console.error('Error counting guest chats:', guestErr.message);
+      }
+    }
+
     // Phase 4: Enhanced search with metadata - wrapped in try-catch
     let references = [];
     let enhancedConfidence = { score: 0, level: 'none', factors: {} };
@@ -143,7 +207,7 @@ exports.askQuestion = async (req, res) => {
     }
 
     // Phase 4: Optimize context window (max 4000 tokens)
-    const optimizedRefs = optimizeContextWindow(references, 4000);
+    const optimizedRefs = optimizeContextWindow(references, 4000, language);
 
     // Phase 4: Build RAG prompt with proper format
     let responseText = getFallbackMessage(language);
@@ -170,26 +234,39 @@ exports.askQuestion = async (req, res) => {
       title: searchQuery.length > 50 ? searchQuery.substring(0, 50) + '...' : searchQuery,
       language: getNormalizedLanguage(language),
       references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)),
-      // Phase 4: Enhanced metadata
+      // Phase 4: Enhanced metadata - only store allowed values
       metadata: {
-        confidence: enhancedConfidence,
-        confidenceLevel: enhancedConfidence.level,
+        confidence: enhancedConfidence.level || 'none',
         detectedConcepts: searchMetadata.detectedConcepts || [],
         searchScore: enhancedConfidence.score,
-        formatUsed: recommendedFormat.format,
-        responseFormat: recommendedFormat.sections,
-        referencesOptimized: optimizedRefs.length,
-        totalReferences: references.length
+        formatUsed: recommendedFormat.format
       }
     };
     if (req.user) chatData.userId = req.user._id;
     else chatData.guestId = guestId || `guest_${Date.now()}`;
 
     const savedChat = await Chat.create(chatData);
+
+    // Increment usage count after successful question
+    if (currentUser && !isPremiumUser) {
+      try {
+        await User.findByIdAndUpdate(currentUser._id, {
+          $inc: { dailyQuestionCount: 1 },
+          $set: { lastQuestionDate: new Date() }
+        });
+        // Update usage info
+        usageInfo.usedToday += 1;
+        usageInfo.remaining = Math.max(0, 20 - usageInfo.usedToday);
+      } catch (usageErr) {
+        console.error('Usage increment error:', usageErr.message);
+      }
+    }
+
     res.json({
       ...savedChat.toObject(),
       references: savedChat.references,
-      confidence: enhancedConfidence
+      confidence: enhancedConfidence,
+      usage: usageInfo
     });
 
   } catch (error) {
@@ -228,6 +305,68 @@ exports.askQuestionStream = async (req, res) => {
       return res.status(400).json({ message: 'Query must be at least 2 characters' });
     }
 
+    // ============================================================
+    // DAILY USAGE LIMIT CHECK - Decrement on each question (for streaming)
+    // ============================================================
+    let userCanAsk = true;
+    let usageInfo = { usedToday: 0, limit: 20, remaining: -1 };
+    let isPremiumUser = false;
+    let currentUser = null;
+
+    if (req.user) {
+      try {
+        currentUser = await User.findById(req.user._id);
+        if (currentUser) {
+          isPremiumUser = currentUser.isPremium === true;
+
+          if (!isPremiumUser) {
+            await currentUser.resetDailyCount();
+            userCanAsk = currentUser.dailyQuestionCount < 20;
+            usageInfo = {
+              usedToday: currentUser.dailyQuestionCount,
+              limit: 20,
+              remaining: Math.max(0, 20 - currentUser.dailyQuestionCount)
+            };
+            if (!userCanAsk) {
+              clearResponseTimeout();
+              return res.status(429).json({
+                message: 'Daily question limit reached. Please upgrade to premium or try again tomorrow.',
+                usage: usageInfo
+              });
+            }
+          } else {
+            usageInfo = { usedToday: 0, limit: -1, remaining: -1, plan: 'premium' };
+          }
+        }
+      } catch (userErr) {
+        console.error('Error fetching user:', userErr.message);
+      }
+    } else if (guestId) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      try {
+        const guestChats = await Chat.countDocuments({
+          guestId: guestId,
+          createdAt: { $gte: today }
+        });
+        userCanAsk = guestChats < 10;
+        usageInfo = {
+          usedToday: guestChats,
+          limit: 10,
+          remaining: Math.max(0, 10 - guestChats)
+        };
+        if (!userCanAsk) {
+          clearResponseTimeout();
+          return res.status(429).json({
+            message: 'Daily question limit reached for guests. Please sign up for more questions.',
+            usage: usageInfo
+          });
+        }
+      } catch (guestErr) {
+        console.error('Error counting guest chats:', guestErr.message);
+      }
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -262,7 +401,7 @@ exports.askQuestionStream = async (req, res) => {
     let streamText = getFallbackMessage(language); // Default fallback
 
     try {
-      const optimizedRefs = optimizeContextWindow(references, 4000);
+      const optimizedRefs = optimizeContextWindow(references, 4000, language);
       const prompt = buildRAGPrompt(searchQuery, optimizedRefs, language, enhancedConfidence, {
         format: recommendedFormat.format
       });
@@ -325,8 +464,7 @@ exports.askQuestionStream = async (req, res) => {
           }
           // Phase 4: Enhanced metadata
           savedChat.metadata = {
-            confidence: enhancedConfidence,
-            confidenceLevel: enhancedConfidence.level,
+            confidence: enhancedConfidence.level || 'none',
             detectedConcepts: searchMetadata.detectedConcepts || [],
             searchScore: enhancedConfidence.score,
             formatUsed: recommendedFormat.format
@@ -345,7 +483,7 @@ exports.askQuestionStream = async (req, res) => {
             { role: 'user', content: searchQuery, timestamp: new Date() },
             { role: 'assistant', content: streamText, references: references.slice(0, 5).map(r => formatReferenceForResponse(r, language)), timestamp: new Date() }
           ],
-          metadata: { confidence: enhancedConfidence, detectedConcepts: searchMetadata.detectedConcepts || [] }
+          metadata: { confidence: enhancedConfidence.level || 'none', detectedConcepts: searchMetadata.detectedConcepts || [] }
         };
 
         if (req.user) chatData.userId = req.user._id;
@@ -356,8 +494,23 @@ exports.askQuestionStream = async (req, res) => {
       }
 
       // Send back the chatId
-      const chatIdData = { type: 'chat_id', chatId: savedChat._id.toString() };
+      const chatIdData = { type: 'chat_id', chatId: savedChat._id.toString(), usage: usageInfo };
       res.write(`data: ${JSON.stringify(chatIdData)}\n\n`);
+
+      // Increment usage count after successful question
+      if (currentUser && !isPremiumUser) {
+        try {
+          await User.findByIdAndUpdate(currentUser._id, {
+            $inc: { dailyQuestionCount: 1 },
+            $set: { lastQuestionDate: new Date() }
+          });
+          // Update usage info
+          usageInfo.usedToday += 1;
+          usageInfo.remaining = Math.max(0, 20 - usageInfo.usedToday);
+        } catch (usageErr) {
+          console.error('Usage increment error:', usageErr.message);
+        }
+      }
 
     } catch (saveErr) {
       console.error('Chat save error (non-fatal):', saveErr.message);
@@ -491,7 +644,7 @@ exports.regenerateResponse = async (req, res) => {
     const recommendedFormat = confidenceScorer.getRecommendedFormat(enhancedConfidence, references);
 
     // Phase 4: Optimize context
-    const optimizedRefs = optimizeContextWindow(references, 4000);
+    const optimizedRefs = optimizeContextWindow(references, 4000, language);
 
     // Phase 4: Build RAG prompt
     const prompt = buildRAGPrompt(chat.query, optimizedRefs, chat.language, enhancedConfidence, {

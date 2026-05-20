@@ -299,6 +299,67 @@ class ResponseFormatter {
 const responseFormatter = new ResponseFormatter();
 
 // ============================================================
+// EMOTIONAL CONTEXT FOR RAG PROMPTS
+// ============================================================
+
+const RAG_EMOTIONAL_OPENINGS = {
+  neutral: {
+    english: 'Assalamu Alaikum! Let me share what the Quran and Hadith teach about this.',
+    hindi: 'अस्सलामु अलैकुम! मुझे बताने दीजिए कि कुरान और हदीस इस विषय पर क्या कहती हैं।',
+    urdu: 'السلام علیکم! مجھے بتانے دیں کہ قرآن اور حدیث اس موضوع پر کیا کہتے ہیں۔',
+    bengali: 'আসসালামু আলাইকুম! আমাকে বলতে দিন কুরআন ও হাদিস এই বিষয়ে কী বলে।',
+    roman_urdu: 'Assalamu Alaikum! Mujhe batane dein ki Quran aur Hadith is topic par kya kehte hain.'
+  },
+  sadness: {
+    english: 'May Allah ease your heart. Let me share beautiful guidance from the Quran and Hadith for you.',
+    hindi: 'अल्लाह आपके दिल को आराम दे। मुझे आपके लिए कुरान और हदीस से खूबसूरत मार्गदर्शन साझा करने दें।',
+    urdu: 'اللہ آپ کے دل کو آرام دے۔ مجھے آپ کے لئے قرآن اور حدیث سے خوبصورت رہنمائی دینے دیں۔',
+    bengali: 'আল্লাহ আপনার মনকে শান্ত করুন। আমাকে আপনার জন্য কুরআন ও হাদিস থেকে সুন্দর দিকনির্দেশনা দিতে দিন।',
+    roman_urdu: 'Allah aapke dil ko araam de. Mujhe aapke liye Quran aur Hadith se khoobsurat hidayat dene dein.'
+  },
+  fear: {
+    english: 'Do not worry. Allah is with you. Let me share His guidance that brings peace.',
+    hindi: 'चिंता मत करो। अल्लाह तुम्हारे साथ है। मुझे उसका मार्गदर्शन साझा करने दें जो शांति लाता है।',
+    urdu: 'پریشان مت ہوں۔ اللہ آپ کے ساتھ ہے۔ مجھے اس کی رہنمائی دینے دیں جو سکون بخش ہے۔',
+    bengali: 'চিন্তা করবেন না। আল্লাহ আপনার সাথে আছেন। আমাকে তাঁর দিকনির্দেশনা দিতে দিন যা শান্তি এনে দেয়।',
+    roman_urdu: 'Pareshan mat hoiye. Allah aapke saath hai. Mujhe uski hidayat dene dein jo sukoon bakhshi hai.'
+  },
+  joy: {
+    english: 'Alhamdulillah! Let me help you understand this beautiful teaching from the Quran and Hadith.',
+    hindi: 'अल्हम्दुलिल्लाह! मुझे आपको कुरान और हदीस की इस खूबसूरत शिक्षा को समझने में मदद करने दें।',
+    urdu: 'الحمد للہ! مجھے آپ کو قرآن اور حدیث کی اس خوبصورت تعلیم کو سمجھنے میں مدد کرنے دیں۔',
+    bengali: 'আলহামদুলিল্লাহ! আমাকে আপনাকে কুরআন ও হাদিসের এই সুন্দর শিক্ষা বুঝতে সাহায্য করতে দিন।',
+    roman_urdu: 'Alhamdulillah! Mujhe aapko Quran aur Hadith ki is khoobsurat taleem samajhne mein madad karein.'
+  },
+  confusion: {
+    english: 'Let me help clarify this for you. Here is what the authentic sources say.',
+    hindi: 'मुझे आपके लिए इसे स्पष्ट करने में मदद करने दें। यहाँ प्रामाणिक स्रोत क्या कहते हैं।',
+    urdu: 'مجھے آپ کے لئے اسے واضح کرنے میں مدد کرنے دیں۔ یہاں مستند ذرائع کیا کہتے ہیں۔',
+    bengali: 'আমাকে আপনার জন্য এটি স্পষ্ট করতে সাহায্য করতে দিন। এখানে প্রামাণিক উৎস কী বলে।',
+    roman_urdu: 'Mujhe aapke liye ise saaf karein. Yehaan authentic sources kya kehte hain.'
+  },
+  hope: {
+    english: 'May Allah fulfill your hope! Here is guidance from the Quran and Hadith.',
+    hindi: 'अल्लाह आपकी उम्मीद पूरी करे! यहाँ कुरान और हदीस से मार्गदर्शन है।',
+    urdu: 'اللہ آپ کی امید پوری کرے! یہاں قرآن اور حدیث سے رہنمائی ہے۔',
+    bengali: 'আল্লাহ আপনার আশা পূরণ করুন! এখানে কুরআন ও হাদিস থেকে দিকনির্দেশনা।',
+    roman_urdu: 'Allah aapki umeed puri karein! Yehaan Quran aur Hadith se hidayat hai.'
+  },
+  anger: {
+    english: 'May Allah calm your heart. Let me share wisdom from the Quran and Hadith to help you.',
+    hindi: 'अल्लाह आपके दिल को शांत करे। मुझे आपकी मदद के लिए कुरान और हदीस से ज्ञान साझा करने दें।',
+    urdu: 'اللہ آپ کے دل کو سکون دے۔ مجھے آپ کی مدد کے لئے قرآن اور حدیث سے حکمت دینے دیں۔',
+    bengali: 'আল্লাহ আপনার মনকে শান্ত করুন। আমাকে আপনার সাহায্যে কুরআন ও হাদিস থেকে জ্ঞান দিতে দিন।',
+    roman_urdu: 'Allah aapke dil ko shant karein. Mujhe aapki madad ke liye Quran aur Hadith se hikmat dene dein.'
+  }
+};
+
+const getRAGEmotionalOpening = (emotion, language) => {
+  const normalizedLang = language.toLowerCase().split('-')[0].trim();
+  return RAG_EMOTIONAL_OPENINGS[emotion]?.[normalizedLang] || RAG_EMOTIONAL_OPENINGS.neutral[normalizedLang];
+};
+
+// ============================================================
 // RAG PROMPT BUILDER
 // ============================================================
 
@@ -306,12 +367,19 @@ const buildRAGPrompt = (query, references, language, confidence, options = {}) =
   const { format = 'detailed' } = options;
   const normalizedLang = language.toLowerCase().split('-')[0].trim();
 
+  // Get question type and emotion from options (if provided)
+  const questionType = options.questionType || 'general';
+  const emotion = options.emotion || 'neutral';
+
+  // Get emotional opening
+  const emotionalOpening = getRAGEmotionalOpening(emotion, normalizedLang);
+
   // Get formatted references for context
   const quranRefs = references.filter(r => r.type === 'quran');
   const hadithRefs = references.filter(r => r.type === 'hadith');
 
-  // Build reference context
-  let referenceContext = '\n\n**References from Quran and Hadith:**\n';
+  // Build reference context - IMPORTANT: Use user's selected language for references
+  let referenceContext = '\n\n**References from Quran and Hadith (in your selected language):**\n';
 
   if (quranRefs.length > 0) {
     referenceContext += '\n📖 **From the Quran:**\n';
@@ -341,31 +409,31 @@ const buildRAGPrompt = (query, references, language, confidence, options = {}) =
     roman_urdu: 'Respond in Roman Urdu. Use simple, clear language.'
   };
 
-  // Build format-specific instructions
+  // Build format-specific instructions with emotional awareness
   const formatInstructions = {
     detailed: `
 **Response Format (Detailed):**
-1. **Title**: A brief, meaningful title for the topic
-2. **Summary**: A short 2-3 sentence summary of the guidance
-3. **Quran Guidance**: Key Quranic verses relevant to the topic
-4. **Hadith Guidance**: Key hadith relevant to the topic
-5. **Explanation**: A simple explanation of the Islamic perspective
-6. **Practical Steps**: 2-3 actionable steps one can take
-7. **Closing**: An encouraging/reminder message
-8. **References**: List the sources used (already provided above)`,
+1. **Warm Opening**: Start with empathy - acknowledge their question and feelings
+2. **Title**: A brief, meaningful title for the topic
+3. **Summary**: A short 2-3 sentence summary of the guidance
+4. **Quran Guidance**: Key Quranic verses relevant to the topic
+5. **Hadith Guidance**: Key hadith relevant to the topic
+6. **Explanation**: A simple explanation of the Islamic perspective
+7. **Practical Steps**: 2-3 actionable steps one can take
+8. **Closing**: An encouraging/reminder message with a heartfelt du'a`,
     standard: `
 **Response Format (Standard):**
-1. **Summary**: Brief overview
-2. **Guidance**: Key teachings from Quran and/or Hadith
-3. **Explanation**: Simple explanation
-4. **Closing**: Encouraging reminder
-5. **References**: List sources`,
+1. **Warm Opening**: Acknowledge their question empathetically
+2. **Summary**: Brief overview
+3. **Guidance**: Key teachings from Quran and/or Hadith
+4. **Explanation**: Simple explanation
+5. **Closing**: Encouraging reminder with du'a`,
     simple: `
 **Response Format (Simple):**
-1. Simple explanation of the topic
-2. Key guidance from sources
-3. Brief closing message
-4. Sources mentioned`
+1. Warm, friendly opening
+2. Simple explanation of the topic
+3. Key guidance from sources
+4. Brief closing message with du'a`
   };
 
   // Build confidence-based caution
@@ -394,6 +462,18 @@ const buildRAGPrompt = (query, references, language, confidence, options = {}) =
 
 If you cannot support a point with the provided references, clearly state that limitation.`;
 
+  // Build question type specific instructions
+  const questionTypeInstructions = {
+    definition: 'Focus on clear definition first, then explain with examples from references.',
+    explanation: 'Provide comprehensive but easy-to-understand explanation.',
+    comparison: 'Clearly explain differences using the references provided.',
+    permission: 'Be clear about what is allowed/permissible according to the sources.',
+    prohibition: 'Explain kindly what is discouraged/prohibited and why.',
+    action: 'Provide practical steps and actionable guidance.',
+    person: 'Describe with respect, providing authentic information from sources.',
+    general: 'Address the question clearly and helpfully.'
+  };
+
   const prompt = `You are an Islamic scholar assistant providing guidance based on authentic Quran and Hadith sources.
 
 **User Query**: ${query}
@@ -403,10 +483,13 @@ ${antiHallucinationRules}
 
 **Instructions:**
 - ${langInstructions[normalizedLang] || langInstructions.english}
+- Start with a warm, empathetic opening: "${emotionalOpening}"
+- ${questionTypeInstructions[questionType] || questionTypeInstructions.general}
 - ONLY use information from the provided references
 - Do NOT invent or assume any references
 - If references are insufficient, state "Not enough authentic references found. Please consult a qualified Islamic scholar."
-- Be respectful, accurate, and helpful
+- Be respectful, accurate, and emotionally supportive
+- Make the response feel personal and caring, not robotic
 
 ${formatInstructions[format] || formatInstructions.detailed}
 
@@ -430,15 +513,19 @@ const getTextByLanguage = (doc, language) => {
 // CONTEXT WINDOW OPTIMIZATION
 // ============================================================
 
-const optimizeContextWindow = (references, maxTokens = 4000) => {
+const optimizeContextWindow = (references, maxTokens = 4000, language = 'english') => {
   // Estimate tokens (rough: 4 chars per token)
   const maxChars = maxTokens * 4;
 
   let totalChars = 0;
   const selectedRefs = [];
 
+  // Normalize language
+  const normalizedLang = language.toLowerCase().split('-')[0].trim();
+
   for (const ref of references) {
-    const text = getTextByLanguage(ref, 'english');
+    // Use the user's selected language for text
+    const text = getTextByLanguage(ref, normalizedLang);
     const src = ref.type === 'quran'
       ? `Quran ${ref.chapter}:${ref.verse}`
       : `${HADITH_COLLECTION_NAMES[ref.book] || ref.book} Hadith ${ref.idInBook || ref.id}`;

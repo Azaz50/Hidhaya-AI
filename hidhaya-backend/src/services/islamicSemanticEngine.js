@@ -2974,38 +2974,39 @@ const islamicConcepts = {
 };
 
 // Noise words to remove from queries by language
+// Only remove TRUE question words, NOT important content words like "islam", "allah", etc.
 const noiseWords = {
   english: [
     "what", "is", "are", "was", "were", "how", "why", "who", "where", "when",
     "tell", "me", "about", "explain", "describe", "define", "does", "do",
-    "in", "islam", "islamic", "muslim", "the", "a", "an", "and", "or", "but",
+    "in", "the", "a", "an", "and", "or", "but",
     "according", "to", "say", "says", "said", "it", "this", "that", "with",
     "for", "from", "by", "can", "could", "should", "would", "may", "might",
     "please", "kindly", "i", "want", "need", "know", "understand"
   ],
   hindi: [
     "क्या", "है", "हैं", "था", "थे", "कैसे", "क्यों", "कौन", "कहाँ", "कब",
-    "मुझे", "बताओ", "के", "बारे", "में", "इस्लाम", "इस्लामी", "मुस्लिम",
-    "के", "का", "की", "को", "से", "पर", "और", "या", "लेकिन", "है",
+    "मुझे", "बताओ", "के", "बारे", "में",
+    "का", "की", "को", "से", "पर", "और", "या", "लेकिन",
     "बताइए", "समझाइए", "दर्शाइए", "कर", "सकता", "चाहिए", "दीजिए"
   ],
   urdu: [
     "کیا", "ہے", "ہیں", "تھا", "تھے", "کیسے", "کیوں", "کون", "کہاں", "کب",
-    "مجھے", "بتاؤ", "کے", "بارے", "میں", "اسلام", "اسلامی", "مسلمان",
-    "کے", "کا", "کی", "کو", "سے", "پر", "اور", "یا", "لیکن", "ہے",
+    "مجھے", "بتاؤ", "کے", "بارے", "میں",
+    "کا", "کی", "کو", "سے", "پر", "اور", "یا", "لیکن",
     "بتائیں", "سمجھائیں", "دکھائیں", "کر", "سکتا", "چاہیے", "دیجیۓ"
   ],
   bengali: [
     "কি", "হয়", "ছিল", "কিভাবে", "কেন", "কে", "কোথায়", "কখন",
-    "আমাকে", "বলো", "সম্পর্কে", "ইসলাম", "ইসলামী", "মুসলিম",
+    "আমাকে", "বলো", "সম্পর্কে",
     "এর", "একটি", "এই", "এবং", "অথবা", "কিন্তু", "কর",
     "দেখাও", "বুঝাও", "বল", "পার", "চাই"
   ],
   roman_urdu: [
     "kya", "hai", "hain", "tha", "the", "kaise", "kyun", "kaun", "kahan", "kab",
-    "mujhe", " batao", "ke", "bare", "mein", "islam", "islami", "muslim",
-    "ka", "ki", "ko", "se", "par", "aur", "ya", "lekin", "hai",
-    " bataiye", "samjhaiye", "dikhaiye", "kar", "sakta", "chahiye", "diye"
+    "mujhe", "batao", "ke", "bare", "mein",
+    "ka", "ki", "ko", "se", "par", "aur", "ya", "lekin",
+    "bataiye", "samjhaiye", "dikhaiye", "kar", "sakta", "chahiye", "diye"
   ]
 };
 

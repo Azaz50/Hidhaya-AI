@@ -26,6 +26,66 @@ const LANGUAGE_MAP = {
 
 const getNormalizedLanguage = (lang) => LANGUAGE_MAP[lang] || 'english';
 
+// ============================================================
+// EMOTIONAL CONTEXT HELPERS - For intelligent responses
+// ============================================================
+const EMOTIONAL_OPENINGS = {
+  neutral: {
+    english: 'Assalamu Alaikum! Let me share what the Quran and Hadith teach about this.',
+    hindi: 'अस्सलामु अलैकुम! मुझे बताने दीजिए कि कुरान और हदीस इस विषय पर क्या कहती हैं।',
+    urdu: 'السلام علیکم! مجھے بتانے دیں کہ قرآن اور حدیث اس موضوع پر کیا کہتے ہیں۔',
+    bengali: 'আসসালামু আলাইকুম! আমাকে বলতে দিন কুরআন ও হাদিস এই বিষয়ে কী বলে।',
+    roman_urdu: 'Assalamu Alaikum! Mujhe batane dein ki Quran aur Hadith is topic par kya kehte hain.'
+  },
+  sadness: {
+    english: 'May Allah ease your heart. Let me share beautiful guidance from the Quran and Hadith for you.',
+    hindi: 'अल्लाह आपके दिल को आराम दे। मुझे आपके लिए कुरान और हदीस से खूबसूरत मार्गदर्शन साझा करने दें।',
+    urdu: 'اللہ آپ کے دل کو آرام دے۔ مجھے آپ کے لئے قرآن اور حدیث سے خوبصورت رہنمائی دینے دیں۔',
+    bengali: 'আল্লাহ আপনার মনকে শান্ত করুন। আমাকে আপনার জন্য কুরআন ও হাদিস থেকে সুন্দর দিকনির্দেশনা দিতে দিন।',
+    roman_urdu: 'Allah aapke dil ko araam de. Mujhe aapke liye Quran aur Hadith se khoobsurat hidayat dene dein.'
+  },
+  fear: {
+    english: 'Do not worry. Allah is with you. Let me share His guidance that brings peace.',
+    hindi: 'चिंता मत करो। अल्लाह तुम्हारे साथ है। मुझे उसका मार्गदर्शन साझा करने दें जो शांति लाता है।',
+    urdu: 'پریشان مت ہوں۔ اللہ آپ کے ساتھ ہے۔ مجھے اس کی رہنمائی دینے دیں جو سکون بخش ہے۔',
+    bengali: 'চিন্তা করবেন না। আল্লাহ আপনার সাথে আছেন। আমাকে তাঁর দিকনির্দেশনা দিতে দিন যা শান্তি এনে দেয়।',
+    roman_urdu: 'Pareshan mat hoiye. Allah aapke saath hai. Mujhe uski hidayat dene dein jo sukoon bakhshi hai.'
+  },
+  joy: {
+    english: 'Alhamdulillah! Let me help you understand this beautiful teaching from the Quran and Hadith.',
+    hindi: 'अल्हम्दुलिल्लाह! मुझे आपको कुरान और हदीस की इस खूबसूरत शिक्षा को समझने में मदद करने दें।',
+    urdu: 'الحمد للہ! مجھے آپ کو قرآن اور حدیث کی اس خوبصورت تعلیم کو سمجھنے میں مدد کرنے دیں۔',
+    bengali: 'আলহামদুলিল্লাহ! আমাকে আপনাকে কুরআন ও হাদিসের এই সুন্দর শিক্ষা বুঝতে সাহায্য করতে দিন।',
+    roman_urdu: 'Alhamdulillah! Mujhe aapko Quran aur Hadith ki is khoobsurat taleem samajhne mein madad karein.'
+  },
+  confusion: {
+    english: 'Let me help clarify this for you. Here is what the authentic sources say.',
+    hindi: 'मुझे आपके लिए इसे स्पष्ट करने में मदद करने दें। यहाँ प्रामाणिक स्रोत क्या कहते हैं।',
+    urdu: 'مجھے آپ کے لئے اسے واضح کرنے میں مدد کرنے دیں۔ یہاں مستند ذرائع کیا کہتے ہیں۔',
+    bengali: 'আমাকে আপনার জন্য এটি স্পষ্ট করতে সাহায্য করতে দিন। এখানে প্রামাণিক উৎস কী বলে।',
+    roman_urdu: 'Mujhe aapke liye ise saaf karein. Yehaan authentic sources kya kehte hain.'
+  },
+  hope: {
+    english: 'May Allah fulfill your hope! Here is guidance from the Quran and Hadith.',
+    hindi: 'अल्लाह आपकी उम्मीद पूरी करे! यहाँ कुरान और हदीस से मार्गदर्शन है।',
+    urdu: 'اللہ آپ کی امید پوری کرے! یہاں قرآن اور حدیث سے رہنمائی ہے۔',
+    bengali: 'আল্লাহ আপনার আশা পূরণ করুন! এখানে কুরআন ও হাদিস থেকে দিকনির্দেশনা।',
+    roman_urdu: 'Allah aapki umeed puri karein! Yehaan Quran aur Hadith se hidayat hai.'
+  },
+  anger: {
+    english: 'May Allah calm your heart. Let me share wisdom from the Quran and Hadith to help you.',
+    hindi: 'अल्लाह आपके दिल को शांत करे। मुझे आपकी मदद के लिए कुरान और हदीस से ज्ञान साझा करने दें।',
+    urdu: 'اللہ آپ کے دل کو سکون دے۔ مجھے آپ کی مدد کے لئے قرآن اور حدیث سے حکمت دینے دیں۔',
+    bengali: 'আল্লাহ আপনার মনকে শান্ত করুন। আমাকে আপনার সাহায্যে কুরআন ও হাদিস থেকে জ্ঞান দিতে দিন।',
+    roman_urdu: 'Allah aapke dil ko shant karein. Mujhe aapki madad ke liye Quran aur Hadith se hikmat dene dein.'
+  }
+};
+
+const getEmotionalOpening = (emotion, language) => {
+  const lang = getNormalizedLanguage(language);
+  return EMOTIONAL_OPENINGS[emotion]?.[lang] || EMOTIONAL_OPENINGS.neutral[lang];
+};
+
 const FALLBACK_MESSAGES = {
   english: `I could not find strongly related Quran or Hadith references for this topic. Our Islamic database is expanding continuously. May Allah grant you clarity. Please consult a qualified Islamic scholar for deeper guidance.`,
   hindi: `इस विषय के लिए कुरान या हदीस के प्रबल संदर्भ नहीं मिले। अल्लाह आपको स्पष्टता प्रदान करे। कृपया योग्य विद्वान से परामर्श करें।`,
@@ -218,5 +278,6 @@ module.exports = {
   formatReferences,
   formatReferencesForResponse,
   getNormalizedLanguage,
+  getEmotionalOpening,
   HADITH_COLLECTION_NAMES
 };

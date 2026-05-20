@@ -1,300 +1,412 @@
-Implement all features and improvements according to the PRD without breaking or removing any existing working functionality. Before modifying or deleting any code, first verify whether it is already working correctly. Improve the AI retrieval pipeline, semantic Islamic search engine, multilingual understanding, RAG-based Quran & Hadith reference system, response quality, performance, scalability, and language-specific replies while maintaining backward compatibility and stable APIs/UI. Focus on clean architecture, optimized performance, accurate dataset-based references, and production-level reliability.
-
-PRD — Hidhaya AI Intelligent Islamic Understanding & Answering System
-Objective
-
-Train and improve Hidhaya AI to become a highly accurate, intelligent, multilingual Islamic AI assistant that:
-
-understands user intent deeply
-retrieves correct Quran & Hadith references
-explains Islam wisely and clearly
-gives emotionally intelligent responses
-avoids hallucinations
-answers according to the selected language
-scales to millions of Quran and Hadith records
-
-The system must prioritize:
-
-Authentic Islamic references + Intelligent explanation + Fast retrieval.
-
-Core Goal
-
-Current issue:
-
-The AI retrieves random or unrelated references and gives weak explanations.
-
-Required improvement:
-
-Hidhaya AI must first UNDERSTAND the question properly before generating an answer.
-
-Required Final AI Flow
-User Question
-   ↓
-Language Detection
-   ↓
-Query Normalization
-   ↓
-Intent Detection
-   ↓
-Islamic Semantic Understanding
-   ↓
-Topic Classification
-   ↓
-Hybrid Search Engine
-   ↓
-Reference Ranking
-   ↓
-Confidence Scoring
-   ↓
-Context Builder
-   ↓
-Gemini AI Explanation Layer
-   ↓
-Final Structured Response
-1. Intelligent Question Understanding
-
-The AI must understand:
-
-meaning
-emotion
-Islamic intent
-topic
-related concepts
-language variations
-
-Example:
-
-User Query	AI Understanding
-Allah kon hain	Allah / Tawheed
-shirk kise kahte hai	Shirk / polytheism
-sabr kya hai	patience
-iman kya hai	faith / belief
-bachon ki talim	tarbiyah
-
-The system should understand concepts instead of relying only on exact keywords.
-
-2. Massive Islamic Semantic Engine
-
-Build a large-scale Islamic semantic mapping system.
-
-The engine must support:
-
-synonyms
-transliterations
-spelling mistakes
-root words
-emotional intent
-semantic relationships
-Islamic terminology
-
-Supported languages:
-
-English
-Urdu
-Hindi
-Bengali
-Roman Urdu
-Arabic
-
-Example:
-
-{
-  "sabr": [
-    "patience",
-    "dhairya",
-    "dheeraj",
-    "صبر",
-    "ধৈর্য"
-  ]
-}
-3. Hybrid Search Architecture
-
-Do NOT rely only on simple keyword search.
-
-Implement:
-
-Layer 1 — Exact Match
-
-Highest priority exact phrase matching.
-
-Layer 2 — BM25 Full Text Search
-
-Fast ranked retrieval for millions of records.
-
-Layer 3 — Semantic Search
-
-Embedding/vector similarity search.
-
-Layer 4 — Fuzzy Search
-
-Handle spelling mistakes and transliterations.
-
-Example:
-
-sherk → shirk
-dhiraj → sabr
-4. Recommended Technologies
-Search Engine
-
-Recommended:
-
-Elasticsearch / OpenSearch
-
-OR
-
-Meilisearch
-Vector Database
-
-Recommended:
-
-Qdrant
-Embedding Models
-
-Recommended multilingual models:
-
-bge-m3
-multilingual-e5-large
-
-These support:
-
-Arabic
-Urdu
-Hindi
-Bengali
-English
-5. Proper RAG System
-
-Implement Retrieval-Augmented Generation.
-
-Correct flow:
-
-Search local Quran & Hadith datasets
-   ↓
-Retrieve authentic references
-   ↓
-Send ONLY retrieved references to Gemini
-   ↓
-Gemini simplifies and explains
-
-Gemini must NEVER generate references independently.
-
-6. Strict Dataset-Based References
-
-AI must ONLY use references from:
-
-Quran JSON
-Hadith JSON
-
-Rules:
-
-never invent references
-never hallucinate Hadith
-never use external Islamic sources
-
-If no relevant reference exists:
-
-Return:
-
-“No exact reference was found in the current dataset. Please consult a qualified Islamic scholar.”
-
-7. Intelligent Ranking System
-
-Rank references using:
-
-Factor	Priority
-exact match	highest
-phrase match	high
-semantic similarity	high
-topic relevance	high
-narrator match	medium
-fuzzy similarity	low
-8. Confidence-Based Responses
-HIGH Confidence
-
-Return:
-
-Quran references
-Hadith references
-structured Islamic explanation
-MEDIUM Confidence
-
-Return:
-
-semantic references
-simplified understanding
-LOW Confidence
-
-Do NOT generate fake references.
-
-Return respectful fallback guidance.
-
-9. Language-Aware Responses
-
-If user selects:
-
-Hindi → answer in Hindi
-Urdu → answer in Urdu
-Bengali → answer in Bengali
-English → answer in English
-
-The response language must strictly follow user settings.
-
-10. AI Response Quality Improvements
-
-Gemini AI should:
-
-simplify Islamic teachings
-explain context clearly
-answer emotionally and respectfully
-maintain authenticity
-generate beautiful structured responses
-
-The AI should NOT:
-
-hallucinate
-generate random references
-give unrelated answers
-11. Recommended Response Structure
-Title
-Short Summary
-Quran Guidance
-Hadith Guidance
-Simple Explanation
-Practical Lessons
-Closing Advice
-References
-12. Performance & Scalability
-
-The system must support:
-
-millions of Hadith
-full Quran
-multilingual translations
-semantic indexing
-fast retrieval
+Before implementing any feature or modification, first analyze the existing codebase carefully. Do NOT remove, break, or modify any already working functionality unless absolutely necessary.
 
 Requirements:
 
-avoid fs.readFile for runtime searching
-use indexed databases
-use caching
-use async processing
-optimize memory usage
-13. Final Goal
+* Keep code clean, modular, scalable, and production-ready
+* Write efficient and optimized code
+* Avoid unnecessary logic, duplicate functions, and unused files
+* Maintain backward compatibility with existing working features
+* Refactor only when it improves performance or maintainability
+* Follow proper folder structure and separation of concerns
+* Ensure APIs, UI, authentication, search, and existing features continue working correctly
+* Prioritize performance, reliability, security, and readability
+* Use reusable services, utilities, and constants wherever possible
+* Add proper error handling and fallback responses
+* Optimize for large-scale datasets and future scalability
+* Avoid loading huge JSON files repeatedly in runtime
+* Validate functionality before removing or replacing any code
+* Keep the implementation fast, maintainable, and easy to extend in future
+
+
+Hidhaya AI — Intelligent Islamic Response Quality Improvement PRD
+Objective
+
+Fix Hidhaya AI’s unpredictable, weak, and semantically incorrect Islamic responses.
+
+The system currently gives:
+
+generic AI-generated replies
+incomplete Islamic understanding
+weak topic detection
+unrelated Quran/Hadith references
+over-explanatory but inaccurate answers
+random retrieval behavior
+
+The goal is to transform Hidhaya AI into a:
+
+highly intelligent
+semantically aware
+context-grounded
+authentic
+trustworthy
+Quran/Hadith-based Islamic AI assistant
+1. Current Core Problems
+Problem 1 — Random Retrieval
+
+Question:
+
+Allah kon hain?
+
+Current behavior:
+
+returns only “Bismillah”
+unrelated hadith about intentions
+weak explanation
+incomplete Islamic understanding
+
+Reason:
+
+system searches keyword “Allah”
+retrieves random references containing “Allah”
+AI hallucinates explanation from weak context
+Problem 2 — Weak Topic Understanding
+
+Question:
+
+Who is Muhammad ﷺ?
+
+Current behavior:
+
+AI generates long generic answer
+retrieval is partially correct but incomplete
+explanation feels robotic and unpredictable
+
+Reason:
+
+no Prophet-topic intelligence
+no Islamic entity system
+no biography/topic mapping
+AI over-generates from limited references
+2. Root Cause Analysis
+
+Current pipeline is likely:
+
+User Question
+↓
+Loose keyword search
+↓
+Random Quran/Hadith match
+↓
+Gemini generates answer freely
+↓
+Unpredictable response
+
+This architecture is incorrect for Islamic AI.
+
+3. Required New Intelligent Architecture
+New Retrieval-Based Islamic AI Pipeline
+User Question
+      ↓
+Language Detection
+      ↓
+Query Normalization
+      ↓
+Islamic Topic Detection
+      ↓
+Islamic Entity Extraction
+      ↓
+Semantic Expansion Engine
+      ↓
+Hybrid Islamic Search Engine
+      ↓
+Re-ranking Layer
+      ↓
+Verified Quran/Hadith Context
+      ↓
+AI Simplification Layer
+      ↓
+Structured Final Response
+4. MOST IMPORTANT RULE
+AI MUST NOT THINK FREELY
+
+Gemini/LLM must NEVER independently generate Islamic information.
+
+AI role is ONLY:
+
+simplify
+explain
+summarize
+structure
+
+AI must ONLY use:
+
+retrieved Quran references
+retrieved Hadith references
+verified Islamic dataset context
+5. Strong Islamic Topic Intelligence
+
+Build topic detection BEFORE search.
+
+Example
+User Question	Detected Topic
+Allah kon hain	Allah / Tawheed
+Muhammad ﷺ kon hain	Prophet Muhammad
+Ibrahim alaihisalam kon hain	Prophet Ibrahim
+shirk kya hai	Shirk
+iman kya hai	Faith
+sabr kya hai	Patience
+
+Without topic detection, retrieval becomes random.
+
+6. Build Islamic Knowledge Graph
+
+Create strong semantic Islamic entity mapping.
+
+Example
+TOPIC_MAP = {
+  allah: {
+    category: "tawheed",
+    synonyms: [
+      "allah",
+      "khuda",
+      "rabb",
+      "maalik",
+      "creator",
+      "rahman",
+      "rahim"
+    ],
+    relatedTopics: [
+      "tawheed",
+      "asma_ul_husna",
+      "rububiyyah"
+    ]
+  }
+}
+7. Prophet Intelligence System
+
+Create dedicated Prophet entity system.
+
+Example
+PROPHET_MAP = {
+  muhammad: {
+    aliases: [
+      "Muhammad",
+      "Muhammad ﷺ",
+      "Rasulullah",
+      "Prophet Muhammad"
+    ],
+    topics: [
+      "prophethood",
+      "revelation",
+      "messenger",
+      "sunnah"
+    ]
+  }
+}
+
+Same for:
+
+Ibrahim AS
+Musa AS
+Isa AS
+Nuh AS
+Yusuf AS
+Adam AS
+8. Prevent Random Quran/Hadith Matches
+Current Problem
+
+Searching:
+
+Allah
+
+matches almost every record.
+
+Result:
+random retrieval.
+
+Required Fix
+
+Search must prioritize:
+
+topic relevance
+semantic meaning
+entity matching
+concept similarity
+
+NOT simple keyword frequency.
+
+9. Intelligent Re-ranking System
+
+After retrieval:
+
+Score results using:
+
+semantic similarity
+topic confidence
+exact phrase match
+entity relevance
+Quran/Hadith relevance
+emotional intent
+
+Keep ONLY top highly relevant references.
+
+10. Structured Islamic Answer Generation
+
+AI responses must follow predictable structure.
+
+Required Response Format
+1. Short Direct Answer
+2. Quran References
+3. Hadith References
+4. Simple Explanation
+5. Practical Understanding
+6. Closing Guidance
+
+Avoid:
+
+unnecessary storytelling
+generic motivational AI text
+robotic paragraphs
+repetitive explanations
+11. Example Expected Behavior
+Question
+Allah kon hain?
+Correct Retrieval
+
+Retrieve:
+
+Surah Ikhlas
+Ayatul Kursi
+Surah Fatihah
+Tawheed references
+
+NOT random hadiths.
+
+Correct Final Response Style
+Allah Islam mein ek aur be-misaal Rab hain.
+Wahi paida karne wale, rizq dene wale aur puri kainaat ke Malik hain.
+
+Quran References:
+- Surah Ikhlas 112:1-4
+- Surah Baqarah 2:255
+- Surah Fatihah 1:2
+
+Simple Explanation:
+Allah ek hain, unka koi shareek nahi.
+Sirf wahi ibadat ke laiq hain.
+12. Example — Prophet Muhammad ﷺ
+Question
+Who is Muhammad ﷺ?
+Correct Retrieval
+
+Retrieve:
+
+Prophet-related Quran verses
+first revelation hadith
+messenger-related references
+Correct Final Response Style
+Prophet Muhammad ﷺ are the final Messenger of Allah sent for guidance of humanity.
+
+Quran References:
+- Quran 33:40
+- Quran 21:107
+
+Hadith References:
+- Sahih al-Bukhari — Hadith 3
+- Sahih Muslim — Hadith 160
+
+Simple Explanation:
+Allah sent Prophet Muhammad ﷺ to teach humanity:
+- Tawheed
+- good character
+- mercy
+- justice
+- worship of Allah alone
+13. Limit AI Creativity
+
+Current issue:
+AI over-explains unpredictably.
+
+Required:
+
+concise
+grounded
+structured
+reference-focused
+
+Avoid:
+
+emotional AI filler
+repeated motivational text
+speculative explanations
+14. Strong Semantic Islamic Engine
+
+Implement:
+
+multilingual embeddings
+Islamic semantic graphs
+transliteration matching
+typo tolerance
+emotional intent detection
+synonym expansion
+topic clustering
+15. Required Search Architecture
+
+Implement hybrid retrieval:
+
+Exact Match
++
+BM25
++
+Vector Search
++
+Semantic Expansion
++
+Re-ranking
+
+Fuse.js alone is insufficient.
+
+16. AI Prompt Control
+
+LLM prompt must strictly enforce:
+
+Use ONLY the provided Quran and Hadith context.
+
+Do NOT invent Islamic information.
+Do NOT hallucinate references.
+Do NOT generate unsupported explanations.
+
+If context is insufficient,
+say clearly that exact references were not found.
+17. Performance Requirements
+
+The system must be:
+
+fast
+scalable
+deterministic
+production-ready
+
+Avoid:
+
+full JSON scans
+fs.readFile on every request
+loading massive datasets repeatedly
+
+Use:
+
+indexing
+embeddings
+vector retrieval
+caching
+preprocessing
+18. Final Goal
 
 Hidhaya AI should become:
 
-highly accurate
-context-aware
-semantic-search powered
-multilingual
-emotionally intelligent
 authentic
-trustworthy
-scalable
-fast
-expert-level Islamic AI assistant
+semantically intelligent
+context-aware
+multilingual
+emotionally balanced
+Quran/Hadith grounded
+highly trustworthy
 
-with:
+Core philosophy:
 
-Quran & Hadith grounded intelligent Islamic understanding.
+Authentic Retrieval First
+AI Explanation Second
+
+NOT:
+
+Random AI Generation First

@@ -25,6 +25,142 @@ const { hybridSearch, BM25, fuzzyMatch, expandQueryCrossLanguage, phoneticSimila
 const { searchCache, searchMetrics, getSearchField, optimizedQuranSearch, optimizedHadithSearch, createIndexes } = require('./performanceOptimizer');
 // Keep old imports for backward compatibility
 const { detectProphet, detectAllahConcept, ALLAH_CONCEPTS, PROPHETS } = require('./semanticMapping');
+// Smart Entity Detection - Built-in for common Islamic queries
+// This prevents random retrieval by boosting high-priority content
+
+// Priority Surahs/Ayahs for specific questions (per Planning.md PRD #11)
+const PRIORITY_CONTENT = {
+  // Allah-related queries - these Surahs MUST appear first
+  allah: {
+    topic: 'tawheed',
+    prioritySurahs: [112, 1, 2], // Ikhlas, Fatiha, Baqarah (Ayatul Kursi)
+    keywords: ['tawheed', 'oneness', 'one', 'single', 'alone', ' creator', 'sustainer', 'mercy', 'merciful'],
+    boostKeywords: ['hu', 'huwa', 'ahad', 'wahid', 'khuda', 'rabb', 'ilaah']
+  },
+  // Prophet Muhammad related queries
+  muhammad: {
+    topic: 'prophethood',
+    prioritySurahs: [33, 21, 3], // Ahzab, Anbiya, Ale Imran
+    keywords: ['prophet', 'messenger', 'nabi', 'rasul', 'muhammad', ' Muhammad'],
+    boostKeywords: ['rahma', 'mercy', 'huda', 'guidance', 'sunnah']
+  },
+  // Tawheed queries
+  tawheed: {
+    topic: 'tawheed',
+    prioritySurahs: [112, 6, 2],
+    keywords: ['tawheed', 'tawhid', 'oneness', 'monotheism'],
+    boostKeywords: ['shirk', 'partner', 'alone', 'single', 'one god']
+  },
+  // Shirk queries
+  shirk: {
+    topic: 'shirk',
+    prioritySurahs: [6, 2, 4],
+    keywords: ['shirk', 'polytheism', 'idolatry', 'partner'],
+    boostKeywords: ['shirk', 'mushrik', 'kufr', 'disbelief']
+  },
+  // Prayer/Salah
+  salah: {
+    topic: 'prayer',
+    prioritySurahs: [2, 4, 33],
+    keywords: ['prayer', 'salah', 'namaz', 'worship'],
+    boostKeywords: ['salah', 'rakat', 'qibla', 'wudu']
+  },
+  // Patience
+  sabr: {
+    topic: 'patience',
+    prioritySurahs: [2, 3, 4],
+    keywords: ['patience', 'sabr', 'endurance'],
+    boostKeywords: ['sabr', 'patient', 'steadfast']
+  },
+  // Faith/Iman
+  iman: {
+    topic: 'faith',
+    prioritySurahs: [2, 8, 9],
+    keywords: ['faith', 'iman', 'belief'],
+    boostKeywords: ['shahadah', 'believe', 'faith']
+  },
+  // Guidance
+  hidayah: {
+    topic: 'guidance',
+    prioritySurahs: [2, 1, 3],
+    keywords: ['guidance', 'hidayah', 'hidayat', 'guide'],
+    boostKeywords: ['huda', 'guide', 'right path', 'straight']
+  }
+};
+
+// Detect what entity/topic the user is asking about
+const detectSmartEntity = (query) => {
+  const lower = query.toLowerCase();
+
+  // Check for Allah-related queries first
+  const allahPatterns = ['allah', 'khuda', 'rab', 'god', 'rabb', 'who is god', 'kon hai allah', 'allah kon hain', 'who is allah', 'what is allah'];
+  if (allahPatterns.some(p => lower.includes(p))) {
+    return 'allah';
+  }
+
+  // Check for Prophet Muhammad
+  const muhammadPatterns = ['muhammad', 'prophet muhammad', 'nabi', 'rasulullah', 'messenger of allah', 'who is muhammad'];
+  if (muhammadPatterns.some(p => lower.includes(p))) {
+    return 'muhammad';
+  }
+
+  // Check for Tawheed
+  const tawheedPatterns = ['tawheed', 'tawhid', 'oneness of god', 'monotheism'];
+  if (tawheedPatterns.some(p => lower.includes(p))) {
+    return 'tawheed';
+  }
+
+  // Check for Shirk
+  const shirkPatterns = ['shirk', 'polytheism', 'idolatry', 'associating partners'];
+  if (shirkPatterns.some(p => lower.includes(p))) {
+    return 'shirk';
+  }
+
+  // Check for Prayer
+  const salahPatterns = ['salah', 'namaz', 'prayer', 'how to pray'];
+  if (salahPatterns.some(p => lower.includes(p))) {
+    return 'salah';
+  }
+
+  // Check for Sabr/Patience
+  const sabrPatterns = ['sabr', 'patience', 'patient', 'endurance'];
+  if (sabrPatterns.some(p => lower.includes(p))) {
+    return 'sabr';
+  }
+
+  // Check for Iman/Faith
+  const imanPatterns = ['iman', 'faith', 'belief', 'believe'];
+  if (imanPatterns.some(p => lower.includes(p))) {
+    return 'iman';
+  }
+
+  // Check for Guidance
+  const hidayahPatterns = ['hidayah', 'guidance', 'guide', 'hidayat'];
+  if (hidayahPatterns.some(p => lower.includes(p))) {
+    return 'hidayah';
+  }
+
+  return null;
+};
+
+// Check if this is a "who is" or "what is" type question (topic question)
+const isTopicQuestion = (query) => {
+  const lower = query.toLowerCase();
+  const topicPatterns = [
+    'who is', 'what is', 'who was', 'what was',
+    'kya hai', 'kon hai', 'kaun hai',
+    'کیا ہے', 'کون ہے',
+    'কি', 'কে'
+  ];
+  return topicPatterns.some(p => lower.includes(p));
+};
+
+// Get priority search terms for entity
+const getPrioritySearchTerms = (entityKey) => {
+  const entity = PRIORITY_CONTENT[entityKey];
+  if (!entity) return [];
+  return [...entity.keywords, ...entity.boostKeywords];
+};
 
 // Check MongoDB connection - dynamic check for each operation
 const isMongoConnected = () => {
@@ -343,25 +479,160 @@ const search = async (query, language = 'english') => {
     return { ...cachedResults, fromCache: true };
   }
 
+  // ============================================================
+  // ENHANCED: Query Normalization with Question Type Detection
+  // ============================================================
+  // Remove noise words based on language - expanded list
+  const noiseWords = {
+    english: [
+      'what is', 'who is', 'how to', 'explain', 'tell me about',
+      'can you', 'please', 'tell', 'define', 'meaning of', 'according to',
+      'in the quran', 'in the hadith', 'from quran', 'from hadith',
+      'does quran say', 'does hadith say', 'what does the quran say', 'what does the hadith say',
+      'is it allowed', 'is it halal', 'is it haram', 'is it permissible', 'is it forbidden',
+      'should i', 'should we', 'can i', 'can we', 'may i', 'would', 'could',
+      'tell me', 'explain to me', 'i want to know', 'i want to understand',
+      'looking for', 'searching for', 'need information', 'need to know',
+      'give me', 'provide me', 'share with me', 'teach me', 'learn about',
+      'write about', 'discuss', 'describe', 'elaborate on', 'clarify',
+      'difference between', 'what\'s the difference', 'compare', 'vs', 'versus'
+    ],
+    hindi: [
+      'क्या है', 'कैसे', 'बताइए', 'बता दो', 'क्या',
+      'कुरान में क्या है', 'हैं', 'किसे कहते हैं', 'कौन है', 'कौन सा है', 'किसका',
+      'क्या कहता है', 'क्या बताता है', 'हलाल है', 'हराम है',
+      'जाइए', 'करें', 'सकते हैं', 'चाहिए', 'होगी', 'होगा', 'किया जा सकता है',
+      'बताइए', 'समझाइए', 'बताओ', 'जानना चाहता हूं', 'जानना चाहती हूं',
+      'के बारे में', 'के विषय में', 'से संबंधित', 'के बारे में जानकारी'
+    ],
+    urdu: [
+      'کیا ہے', 'کیسے', 'بتائیں', 'کیا',
+      'قرآن میں کیا ہے', 'کون ہے', 'کسے کہتے ہیں', 'کس کو کہتے ہیں',
+      'کیا کہتا ہے', 'کیا بیان کرتا ہے',
+      'حلال ہے', 'حرام ہے', 'جایز ہے', 'ممنوع ہے',
+      'کر سکتے ہیں', 'کرنا چاہیے', 'ہونا چاہیے', 'کیا جائے',
+      'بتائیے', 'سمجھائیے', 'بیان کریں', 'وضاحت کریں',
+      'کے بارے میں', 'کے متعلق', 'سے متعلق معلومات'
+    ],
+    bengali: [
+      'কি', 'কিভাবে', 'বলো', 'কুরআনে কি বলে', 'কে',
+      'কাকে বলে', 'কারা', 'কোন', 'কিরূপ', 'কীভাবে', 'কিসের',
+      'কি বলে', 'কি বলেছে', 'কুরআন কি বলে',
+      'হালাল', 'হারাম', 'জায়েজ', 'নাজায়েজ',
+      'করা যায়', 'করা উচিত', 'করা সম্ভব', 'হবে',
+      'বলুন', 'বুঝান', 'বর্ণনা করুন', 'ব্যাখ্যা করুন',
+      'সম্পর্কে', 'সম্পর্কিত', 'সম্পর্কে তথ্য'
+    ],
+    roman_urdu: [
+      'kya hai', 'kaise', 'batao', 'ke', 'kya',
+      'kon hai', 'kise kahte hain', 'kiska', 'konsa', 'kaisa', 'kaisi', 'kaise',
+      'kya kehta hai', 'kya bolta hai', 'quran kya kehta hai',
+      'halal hai', 'haram hai', 'jaiz hai', 'mana hai',
+      'kar sakte hain', 'karna chahiye', 'hona chahiye', 'kar sakega',
+      'batao', 'samjhao', 'bayan karein', 'wazahat karein',
+      'ke baray mein', 'ke mutaliq', 'ke bare mein', 'information ke liye'
+    ],
+    arabic: [
+      'ما هو', 'كيف', 'في الإسلام', 'من هو', 'ما هي', 'ما هو تعريف', 'ما معنى',
+      'ما حكم', 'ما حكم الدين في', 'هل', 'هل يجوز', 'هل يحل', 'هل يحرم',
+      'ما الفرق بين', 'ما العلاقة بين', 'اشرح', 'فسر', 'بين', 'عرف',
+      'من', 'ماذا', 'كيف', 'لماذا', 'متى', 'أين'
+    ]
+  };
+
+  let normalizedQuery = query.toLowerCase().trim();
+  const detectedLang = language.split('-')[0];
+  const langNoiseWords = noiseWords[detectedLang] || noiseWords.english;
+
+  // Detect question type for better response generation
+  const questionTypes = {
+    definition: ['what is', 'who is', 'define', 'meaning of', 'kya hai', 'کیا ہے', 'কি'],
+    explanation: ['explain', 'tell me about', 'how does', 'why', 'kaise', 'کیسے', 'কিভাবে'],
+    comparison: ['difference between', 'vs', 'versus', 'compare', 'farq', ' فرق', 'পার্থক্য'],
+    permission: ['is it allowed', 'is it halal', 'is it permissible', 'can i', 'halal hai', 'jaiz hai', 'হালাল', 'জায়েজ'],
+    prohibition: ['is it forbidden', 'is it haram', 'can\'t', 'haram hai', 'mana hai', 'হারাম', 'মানা'],
+    action: ['should i', 'what should', 'how to', 'karna chahiye', 'کرنا چاہیے', 'করা উচিত'],
+    location: ['where', 'kahan', 'kaha', 'কোথায়'],
+    person: ['who', 'kon', 'kaun', 'কে']
+  };
+
+  // Detect question type
+  let detectedQuestionType = 'general';
+  for (const [qType, patterns] of Object.entries(questionTypes)) {
+    if (patterns.some(p => normalizedQuery.includes(p.toLowerCase()))) {
+      detectedQuestionType = qType;
+      break;
+    }
+  }
+
+  // Remove noise words - handle both single and multi-word phrases
+  // Sort by length descending to handle longer phrases first
+  const sortedNoiseWords = [...langNoiseWords].sort((a, b) => b.length - a.length);
+  for (const word of sortedNoiseWords) {
+    normalizedQuery = normalizedQuery.replace(new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ');
+  }
+  // Clean up
+  normalizedQuery = normalizedQuery.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
   // Use the new comprehensive semantic engine for query processing
-  let semanticResult = { detectedConcepts: [], normalizedQuery: query, expandedQuery: '', detectedLanguage: 'english', emotion: 'neutral' };
+  let semanticResult = { detectedConcepts: [], normalizedQuery: normalizedQuery, expandedQuery: '', detectedLanguage: detectedLang, emotion: 'neutral' };
   try {
     semanticResult = processQuery(query, language);
+    if (semanticResult.normalizedQuery) {
+      normalizedQuery = semanticResult.normalizedQuery;
+    }
   } catch (e) {
     console.error('Semantic engine error:', e.message);
   }
 
   const detectedConcepts = semanticResult.detectedConcepts || [];
-  const normalizedQuery = semanticResult.normalizedQuery || query;
   const expandedQuery = semanticResult.expandedQuery || '';
+
+  // ============================================================
+  // PRIORITY: Detect Islamic Entity FIRST (PRD #5, #8)
+  // This prevents random retrieval - entity search before keyword search
+  // Using smart built-in entity detection
+  // ============================================================
+  let detectedEntity = null;
+  let entitySearchQuery = null;
+  let isEntityQuestion = false;
+
+  // Use smart built-in entity detection
+  isEntityQuestion = isTopicQuestion(query);
+  const smartEntityKey = detectSmartEntity(query);
+
+  if (smartEntityKey) {
+    detectedEntity = {
+      key: smartEntityKey,
+      type: 'smart',
+      entity: PRIORITY_CONTENT[smartEntityKey]
+    };
+    console.log(`🎯 Smart Entity detected: ${smartEntityKey} (topic: ${detectedEntity.entity?.topic})`);
+
+    // Build entity-specific search query
+    entitySearchQuery = smartEntityKey;
+    console.log(`   Entity search query: "${entitySearchQuery}"`);
+  }
 
   // Debug: Log what we're searching for
   console.log(`🔍 Search query: "${query}" -> normalized: "${normalizedQuery}"`);
   console.log(`   Detected concepts: ${detectedConcepts.join(', ') || 'none'}`);
+  console.log(`   Entity question: ${isEntityQuestion}, Entity: ${detectedEntity ? detectedEntity.key : 'none'}`);
   console.log(`   MongoDB connected: ${isMongoConnected()}`);
 
   // Build expanded search terms using both old and new semantic systems
-  let searchTerms = [normalizedQuery];
+  // PRIORITY: If entity detected, use entity-specific terms FIRST (PRD #8 - prevent random retrieval)
+  let searchTerms = [];
+
+  if (detectedEntity && detectedEntity.key) {
+    // Use entity-specific search terms to prevent random retrieval
+    const entityTerms = getPrioritySearchTerms(detectedEntity.key);
+    searchTerms = [...entityTerms];
+    console.log(`   Entity search terms: ${searchTerms.join(', ')}`);
+  } else {
+    // Fallback to regular normalized query
+    searchTerms = [normalizedQuery];
+  }
 
   // Add terms from detected concepts (new semantic engine)
   for (const concept of detectedConcepts) {
@@ -407,37 +678,70 @@ const search = async (query, language = 'english') => {
   // Try MongoDB first
   if (isMongoConnected()) {
     // Check if collections have data
+    let mongoHasData = false;
     try {
       const quranCount = await Quran.countDocuments();
       const hadithCount = await Hadith.countDocuments();
       console.log(`   MongoDB collections: Quran=${quranCount}, Hadith=${hadithCount}`);
 
       if (quranCount === 0 && hadithCount === 0) {
-        console.log('   ⚠️ MongoDB collections are empty! Data may not be seeded.');
+        console.log('   ⚠️ MongoDB collections are empty! Using fallback data.');
+        mongoHasData = false;
+      } else {
+        mongoHasData = true;
       }
     } catch (countErr) {
       console.error('   Count error:', countErr.message);
     }
 
-    // Use Phase 3 optimized search functions
-    try {
-      const quranResults = await optimizedQuranSearch(normalizedQuery, language, Quran);
-      const hadithResults = await optimizedHadithSearch(normalizedQuery, language, Hadith);
+    // If MongoDB has no data, use fallback
+    if (!mongoHasData) {
+      console.log('   MongoDB has no data, using fallback data');
+      loadFallbackData();
 
-      console.log(`   MongoDB results: Quran=${quranResults.length}, Hadith=${hadithResults.length}`);
+      // Use advanced search on fallback
+      const advancedResults = await performAdvancedSearch(normalizedQuery, fallbackDocuments);
 
-      results = [
-        ...quranResults.slice(0, 5).map(r => ({ ...r, type: 'quran', matchLayer: 'exact', confidence: 1.0 })),
-        ...hadithResults.slice(0, 5).map(r => ({ ...r, type: 'hadith', matchLayer: 'exact', confidence: 1.0 }))
-      ];
-      matchLayers.exact = results.length;
-    } catch (error) {
-      console.log('Optimized search error:', error.message);
-      console.log('Falling back to layer-based search');
-      // Layer 1: Exact Match (highest priority)
-      let exactResults = await layer1ExactMatchWithTerms(searchTerms, language);
-      matchLayers.exact = exactResults.length;
-      results = [...results, ...exactResults];
+      if (advancedResults.results && advancedResults.results.length > 0) {
+        matchLayers.advanced = advancedResults.results.length;
+        results = advancedResults.results.map(r => ({
+          ...r,
+          matchLayer: 'advanced',
+          confidence: r.searchScore || 0.6,
+          advancedScores: r.scoreBreakdown
+        }));
+      } else {
+        // Basic fallback search
+        results = fallbackDocuments
+          .filter(doc => {
+            const searchText = `${doc.english || ''} ${doc.urdu || ''} ${doc.hindi || ''} ${doc.bengali || ''}`.toLowerCase();
+            return searchTerms.some(term => searchText.includes(term.toLowerCase()));
+          })
+          .slice(0, 10)
+          .map(doc => ({ ...doc, matchLayer: 'fallback', confidence: 0.7 }));
+        matchLayers.fallback = results.length;
+      }
+    } else {
+      // Use Phase 3 optimized search functions
+      try {
+        const quranResults = await optimizedQuranSearch(normalizedQuery, language, Quran);
+        const hadithResults = await optimizedHadithSearch(normalizedQuery, language, Hadith);
+
+        console.log(`   MongoDB results: Quran=${quranResults.length}, Hadith=${hadithResults.length}`);
+
+        results = [
+          ...quranResults.slice(0, 5).map(r => ({ ...r, type: 'quran', matchLayer: 'exact', confidence: 1.0 })),
+          ...hadithResults.slice(0, 5).map(r => ({ ...r, type: 'hadith', matchLayer: 'exact', confidence: 1.0 }))
+        ];
+        matchLayers.exact = results.length;
+      } catch (error) {
+        console.log('Optimized search error:', error.message);
+        console.log('Falling back to layer-based search');
+        // Layer 1: Exact Match (highest priority)
+        let exactResults = await layer1ExactMatchWithTerms(searchTerms, language);
+        matchLayers.exact = exactResults.length;
+        results = [...results, ...exactResults];
+      }
     }
 
     // Layer 2: Relaxed Match (if exact didn't find enough)
@@ -489,6 +793,13 @@ const search = async (query, language = 'english') => {
     matchLayers.fuzzy = fuzzyResults.length;
   }
 
+  // ============================================================
+  // RE-RANKING ENGINE - PRD Requirement #18, #9
+  // Score results by: topic relevance, semantic similarity,
+  // exact phrase presence, narrator match, confidence, concept match, entity relevance
+  // ============================================================
+  results = rerankResults(results, normalizedQuery, detectedConcepts, detectedEntity);
+
   // Deduplicate and rank results
   results = deduplicateAndRank(results);
 
@@ -508,7 +819,7 @@ const search = async (query, language = 'english') => {
     layer: results[0]?.matchLayer || 'unknown'
   });
 
-  // Cache results for future queries
+  // Cache results for future queries - include question type for better response generation
   const finalSearchMetadata = {
     query,
     normalizedQuery,
@@ -516,6 +827,15 @@ const search = async (query, language = 'english') => {
     detectedLanguage: semanticResult.detectedLanguage,
     emotion: semanticResult.emotion,
     expandedQuery,
+    questionType: detectedQuestionType, // Add detected question type for intelligent responses
+    // Add Islamic entity detection for intelligent retrieval (PRD #5, #6, #7)
+    detectedEntity: detectedEntity ? {
+      type: detectedEntity.type,
+      key: detectedEntity.key,
+      name: detectedEntity.entity.name,
+      topic: detectedEntity.entity.topic,
+      isTopicQuestion: isEntityQuestion
+    } : null,
     totalDocuments: isMongoConnected() ? 'indexed' : fallbackDocuments.length,
     layerStats: matchLayers,
     responseTime
@@ -759,6 +1079,149 @@ const detectEmotion = (query) => {
   }
 
   return 'neutral';
+};
+
+// ============================================================
+// RE-RANKING ENGINE - PRD Requirement #18, #9 (Intelligent Re-ranking)
+// Score results by: topic relevance, semantic similarity,
+// exact phrase presence, narrator match, confidence, concept match, entity relevance
+// ============================================================
+const rerankResults = (results, normalizedQuery, detectedConcepts, detectedEntity = null) => {
+  if (!results || results.length === 0) return results;
+
+  const queryWords = normalizedQuery.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+
+  // Score each result based on multiple factors
+  const scoredResults = results.map(result => {
+    let score = result.confidence || 0.5;
+    const scoreBreakdown = {};
+
+    // Get text for matching
+    const allText = `${result.english || ''} ${result.urdu || ''} ${result.hindi || ''} ${result.bengali || ''}`.toLowerCase();
+
+    // ============================================================
+    // Entity-based scoring (PRD #9) - priority for topic questions
+    // This prevents random retrieval by boosting topic-relevant content
+    // ============================================================
+    // Handle both old format and new smart entity format
+    const entityTopic = detectedEntity?.entity?.topic || detectedEntity?.topic;
+    const entityKey = detectedEntity?.key || null;
+
+    if (entityTopic) {
+      const resultTopics = result.topics || result.keywords || [];
+      const topicLower = entityTopic.toLowerCase();
+
+      // Check if result matches the detected entity's topic
+      const topicMatch = resultTopics.some(topic =>
+        topic.toLowerCase().includes(topicLower) || topicLower.includes(topic.toLowerCase())
+      );
+
+      if (topicMatch) {
+        // Strong boost for topic match
+        score += 0.25;
+        scoreBreakdown.entityTopicMatch = 0.25;
+      }
+
+      // Check for specific topic keywords in the result
+      const topicKeywords = {
+        tawheed: ['tawheed', 'oneness', 'unity', 'single', 'one', 'alone'],
+        prophethood: ['prophet', 'messenger', 'revelation', 'nabi', 'rasul'],
+        sabr: ['patience', 'sabr', 'endurance', 'steady'],
+        iman: ['faith', 'iman', 'belief', 'shahadah'],
+        salah: ['prayer', 'salah', 'namaz', 'worship'],
+        shirk: ['shirk', 'polytheism', 'partners', 'associate']
+      };
+
+      const entityKeywords = topicKeywords[topicLower] || [];
+      if (entityKeywords.length > 0) {
+        const keywordMatchCount = entityKeywords.filter(kw =>
+          allText.includes(kw.toLowerCase())
+        ).length;
+        if (keywordMatchCount > 0) {
+          const keywordBonus = Math.min(0.15, keywordMatchCount * 0.05);
+          score += keywordBonus;
+          scoreBreakdown.entityKeywordMatch = keywordBonus;
+        }
+      }
+
+      // Priority Surah/Ayah boost for smart entities (PRD #11)
+      if (entityKey && PRIORITY_CONTENT[entityKey]) {
+        const priority = PRIORITY_CONTENT[entityKey];
+        const resultChapter = result.chapter;
+        // Boost if result is from priority Surahs (e.g., Surah Ikhlas for Allah queries)
+        if (resultChapter && priority.prioritySurahs?.includes(parseInt(resultChapter))) {
+          score += 0.2;
+          scoreBreakdown.prioritySurah = 0.2;
+        }
+      }
+    }
+
+    // Factor 1: Exact phrase match in content (highest priority)
+    const exactMatches = queryWords.filter(word => allText.includes(word)).length;
+    const exactMatchBonus = Math.min(0.3, exactMatches * 0.1);
+    score += exactMatchBonus;
+    scoreBreakdown.exactMatch = exactMatchBonus;
+
+    // Factor 2: Topic/Concept match (if detected)
+    if (detectedConcepts.length > 0) {
+      const resultTopics = result.topics || result.keywords || [];
+      const conceptMatches = detectedConcepts.filter(concept =>
+        resultTopics.some(topic => topic.toLowerCase().includes(concept.toLowerCase()))
+      ).length;
+      const conceptBonus = Math.min(0.2, conceptMatches * 0.1);
+      score += conceptBonus;
+      scoreBreakdown.conceptMatch = conceptBonus;
+    }
+
+    // Factor 3: Source quality bonus (Quran preferred)
+    if (result.type === 'quran') {
+      score += 0.1;
+      scoreBreakdown.sourceBonus = 0.1;
+    } else if (result.type === 'hadith' && result.grade) {
+      // Boost authenticated hadiths
+      if (result.grade.toLowerCase().includes('sahih')) {
+        score += 0.08;
+        scoreBreakdown.gradeBonus = 0.08;
+      } else if (result.grade.toLowerCase().includes('hasan')) {
+        score += 0.05;
+        scoreBreakdown.gradeBonus = 0.05;
+      }
+    }
+
+    // Factor 4: Content length relevance (medium length is often better)
+    const contentLength = allText.length;
+    if (contentLength > 50 && contentLength < 500) {
+      score += 0.05;
+      scoreBreakdown.lengthBonus = 0.05;
+    }
+
+    // Factor 5: Layer priority boost (exact > semantic > relaxed > fuzzy)
+    const layerBoost = {
+      exact: 0.15,
+      semantic: 0.1,
+      relaxed: 0.05,
+      fuzzy: 0,
+      advanced: 0.08,
+      bm25: 0.05,
+      crossLanguage: 0.03,
+      phonetic: 0.02
+    };
+    const layerBonus = layerBoost[result.matchLayer] || 0;
+    score += layerBonus;
+    scoreBreakdown.layerBonus = layerBonus;
+
+    // Cap score at 1.0
+    score = Math.min(1, score);
+
+    return {
+      ...result,
+      rerankScore: score,
+      rerankBreakdown: scoreBreakdown
+    };
+  });
+
+  // Sort by rerank score (highest first)
+  return scoredResults.sort((a, b) => b.rerankScore - a.rerankScore);
 };
 
 // ============================================================
